@@ -1,3 +1,6 @@
+#ifndef BINARY_SEARCH_SINGLE_CORE_HPP
+#define BINARY_SEARCH_SINGLE_CORE_HPP
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -44,3 +47,5 @@ int binary_search(const std::vector<int>& arr, int target)
 
     return -1;
 }
+
+#endif // BINARY_SEARCH_SINGLE_CORE_HPP

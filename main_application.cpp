@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <thread>
 #include <sched.h>
+#include "binary_search_single_core.hpp"
 #include "resource_monitor.hpp"
 #include "plot_generator.hpp"
 
@@ -10,40 +11,10 @@
 #include "database_manager.hpp"
 #endif
 
-// Function to set CPU affinity to a specific core
-void set_cpu_affinity(int core_id) {
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(core_id, &mask);
-    
-    if (sched_setaffinity(0, sizeof(mask), &mask) == -1) {
-        perror("sched_setaffinity");
-        exit(EXIT_FAILURE);
-    }
-}
-
-// Binary search function
-int binary_search(const std::vector<int>& arr, int target) {
-    int left = 0;
-    int right = arr.size() - 1;
-    
-    while (left <= right) {
-        int mid = left + (right - left) / 2;
-        
-        if (arr[mid] == target) {
-            return mid; // Found the target
-        } else if (arr[mid] < target) {
-            left = mid + 1; // Search the right half
-        } else {
-            right = mid - 1; // Search the left half
-        }
-    }
-    
-    return -1; // Target not found
-}
-
-int main() {
-    try {
+int main() 
+{
+    try 
+    {
         // Set CPU affinity to core 0 (static assignment)
         const int core_id = 0;
         set_cpu_affinity(core_id);
@@ -52,7 +23,6 @@ int main() {
         // Initialize monitoring
         ResourceMonitor monitor;
         
-        // Initialize database if SQLite is available
         #ifdef HAS_SQLITE
             DatabaseManager db_manager("resource_metrics.db");
             std::cout << "Database initialized: resource_metrics.db" << std::endl;
@@ -60,14 +30,16 @@ int main() {
         
         // Create test data - sorted array for binary search
         std::vector<int> sorted_array;
-        for (int i = 0; i < 1000000; i += 3) {
+        for (int i = 0; i < 1000000; i += 3) 
+        {
             sorted_array.push_back(i);
         }
         
         // Run multiple binary searches and monitor resources
         std::vector<int> targets = {1000, 50000, 100000, 500000, 999999};
         
-        for (int target : targets) {
+        for (int target : targets) 
+        {
             std::cout << "Searching for target: " << target << std::endl;
             
             // Start monitoring
@@ -86,10 +58,13 @@ int main() {
             #endif
             
             // Print search result
-            if (result != -1) {
+            if (result != -1) 
+            {
                 std::cout << "  Found at index: " << result
                           << " (value: " << sorted_array[result] << ")" << std::endl;
-            } else {
+            }
+            else 
+            {
                 std::cout << "  Not found" << std::endl;
             }
             
@@ -109,10 +84,12 @@ int main() {
         // Read CSV file into csv_data
         std::ifstream csv_file("resource_metrics.csv");
         std::string line;
-        while (std::getline(csv_file, line)) {
+        while (std::getline(csv_file, line)) 
+        {
             std::vector<std::string> row;
             size_t pos = 0;
-            while ((pos = line.find(',')) != std::string::npos) {
+            while ((pos = line.find(',')) != std::string::npos) 
+            {
                 row.push_back(line.substr(0, pos));
                 line.erase(0, pos + 1);
             }
@@ -128,7 +105,8 @@ int main() {
         std::cout << "- CSV export: resource_metrics.csv" << std::endl;
         std::cout << "- Visualization: resource_metrics.png" << std::endl;
         
-    } catch (const std::exception& e) {
+    } catch (const std::exception& e) 
+    {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
