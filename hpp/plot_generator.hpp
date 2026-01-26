@@ -25,8 +25,8 @@ public:
         
         // Generate GNUplot script
         std::string script_filename = output_prefix + ".plt";
-        generate_gnuplot_script(data_filename, script_filename);
-        
+        generate_gnuplot_script(data_filename, script_filename, output_prefix);
+
         // Execute GNUplot
         execute_gnuplot(script_filename);
     }
@@ -38,8 +38,8 @@ public:
         convert_csv_to_data_file(csv_file, data_filename);
         
         std::string script_filename = output_prefix + ".plt";
-        generate_gnuplot_script(data_filename, script_filename);
-        
+        generate_gnuplot_script(data_filename, script_filename, output_prefix);
+
         execute_gnuplot(script_filename);
     }
 
@@ -87,7 +87,8 @@ private:
     }
 
     void generate_gnuplot_script(const std::string& data_file,
-                                const std::string& script_file) {
+                                const std::string& script_file,
+                                const std::string& output_prefix) {
         std::ofstream file(script_file);
         if (!file.is_open()) {
             throw std::runtime_error("Could not open script file for writing: " + script_file);
@@ -95,7 +96,7 @@ private:
         
         file << "# GNUplot script for resource monitoring\n";
         file << "set terminal pngcairo enhanced font 'Arial,10' size 1200,800\n";
-        file << "set output 'resource_metrics.png'\n";
+        file << "set output '" << output_prefix << ".png'\n";
         file << "\n";
         
         file << "set multiplot layout 2,2 title 'Resource Monitoring Metrics' font 'Arial,14'\n";
