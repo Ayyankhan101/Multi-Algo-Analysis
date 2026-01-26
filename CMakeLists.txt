@@ -1,0 +1,164 @@
+cmake_minimum_required(VERSION 3.10)
+project(DSA_ANALYSIS_THEORY LANGUAGES CXX)
+
+# --- Compiler Flags ---
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Enable warnings and optimizations
+add_compile_options(-Wall -Wextra -Werror -O2)
+
+# --- Dependencies ---
+find_package(Threads REQUIRED)
+
+# SQLite3
+find_package(SQLite3 REQUIRED)
+if (NOT SQLite3_FOUND)
+    message(FATAL_ERROR "SQLite3 not found. Please install SQLite3 (e.g., sudo apt-get install libsqlite3-dev).")
+endif()
+
+# GNUplot (optional)
+find_program(GNUPLOT_EXECUTABLE gnuplot)
+if (NOT GNUPLOT_EXECUTABLE)
+    message(WARNING "GNUplot not found. Plotting features will be disabled.")
+endif()
+
+# Google Test
+enable_testing()
+find_package(GTest REQUIRED)
+if (NOT GTEST_FOUND)
+    message(FATAL_ERROR "Google Test not found. Please install Google Test (e.g., sudo apt-get install libgtest-dev).")
+endif()
+
+# --- Libraries ---
+# Resource Monitor Library
+add_library(resource_monitor
+    resource_monitor.hpp
+)
+target_include_directories(resource_monitor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Database Manager Library
+add_library(database_manager
+    database_manager.hpp
+)
+target_include_directories(database_manager PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} /usr/include)
+target_link_libraries(database_manager PRIVATE ${SQLite3_LIBRARIES})
+target_compile_definitions(database_manager PRIVATE HAS_SQLITE=1)
+
+# Plot Generator Library
+add_library(plot_generator
+    plot_generator.hpp
+)
+target_include_directories(plot_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if (GNUPLOT_EXECUTABLE)
+    target_compile_definitions(plot_generator PRIVATE HAS_GNUPLOT=1)
+else()
+    target_compile_definitions(plot_generator PRIVATE HAS_GNUPLOT=0)
+endif()
+
+# Binary Search Library
+add_library(binary_search
+    binary_search_single_core.cpp
+)
+target_include_directories(binary_search PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# --- Executable ---
+add_executable(resource_monitor_app
+    main_application.cpp
+)
+target_include_directories(resource_monitor_app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(resource_monitor_app
+    PRIVATE
+    resource_monitor
+    database_manager
+    plot_generator
+    binary_search
+    ${SQLite3_LIBRARIES}
+    Threads::Threads
+)
+
+# --- Tests ---
+# Resource Monitor Tests
+add_executable(resource_monitor_tests
+    tests/test_resource_monitor.cpp
+)
+target_include_directories(resource_monitor_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(resource_monitor_tests
+    PRIVATE
+    resource_monitor
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME resource_monitor_tests COMMAND resource_monitor_tests)
+
+# Database Manager Tests
+add_executable(database_manager_tests
+    tests/test_database_manager.cpp
+)
+target_include_directories(database_manager_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(database_manager_tests
+    PRIVATE
+    database_manager
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME database_manager_tests COMMAND database_manager_tests)
+
+# Plot Generator Tests
+add_executable(plot_generator_tests
+    tests/test_plot_generator.cpp
+)
+target_link_libraries(plot_generator_tests
+    PRIVATE
+    plot_generator
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME plot_generator_tests COMMAND plot_generator_tests)
+
+# Binary Search Tests
+add_executable(binary_search_tests
+    tests/test_binary_search.cpp
+)
+target_link_libraries(binary_search_tests
+    PRIVATE
+    binary_search
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME binary_search_tests COMMAND binary_search_tests)
+
+# Integration Tests
+add_executable(integration_tests
+    tests/test_integration.cpp
+)
+target_link_libraries(integration_tests
+    PRIVATE
+    resource_monitor
+    database_manager
+    plot_generator
+    binary_search
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME integration_tests COMMAND integration_tests)
+
+# --- Installation ---
+# Install libraries
+install(TARGETS
+    resource_monitor
+    database_manager
+    plot_generator
+    binary_search
+    resource_monitor_app
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+# Install headers
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    DESTINATION include
+    FILES_MATCHING PATTERN "*.hpp"
+)
