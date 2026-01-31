@@ -296,4 +296,5 @@ CMakeFiles/integration_tests.dir/tests/test_integration.cpp.o: \
  /usr/include/c++/15/bits/quoted_string.h \
  /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/tests/../hpp/database_manager.hpp \
  /usr/include/sqlite3.h \
- /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/tests/../hpp/plot_generator.hpp
+ /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/tests/../hpp/plot_generator.hpp \
+ /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/tests/../hpp/metric_types.hpp

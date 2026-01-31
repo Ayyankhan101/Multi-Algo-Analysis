@@ -1,0 +1,16 @@
+metric,value
+avg_cpu_utilization,10
+avg_execution_time,1.61e-07
+avg_memory_usage,100
+avg_page_faults,0
+avg_thread_count,1
+max_cpu_utilization,10
+max_memory_usage,100
+min_cpu_utilization,10
+min_memory_usage,100
+p50_cpu_utilization,10
+p50_memory_usage,100
+p95_cpu_utilization,10
+p95_memory_usage,100
+p99_cpu_utilization,10
+p99_memory_usage,100

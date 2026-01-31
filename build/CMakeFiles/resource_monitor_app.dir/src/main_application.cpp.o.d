@@ -244,5 +244,12 @@ CMakeFiles/resource_monitor_app.dir/src/main_application.cpp.o: \
  /usr/include/c++/15/bits/locale_conv.h \
  /usr/include/c++/15/bits/quoted_string.h \
  /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/src/../hpp/plot_generator.hpp \
+ /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/src/../hpp/metric_types.hpp \
+ /usr/include/c++/15/map /usr/include/c++/15/bits/stl_tree.h \
+ /usr/include/c++/15/ext/aligned_buffer.h \
+ /usr/include/c++/15/bits/node_handle.h \
+ /usr/include/c++/15/bits/stl_map.h \
+ /usr/include/c++/15/bits/stl_multimap.h \
+ /usr/include/c++/15/bits/erase_if.h \
  /home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/src/../hpp/database_manager.hpp \
  /usr/include/sqlite3.h

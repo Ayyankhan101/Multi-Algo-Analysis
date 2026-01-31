@@ -7,8 +7,9 @@ A comprehensive performance analysis tool for Data Structures and Algorithms. Th
 - **Performance Monitoring**: Tracks CPU time, memory usage, and execution time for each algorithm
 - **Multi-core Affinity**: Allows specifying which CPU core each algorithm runs on for consistent performance measurements
 - **Database Storage**: Stores performance metrics in SQLite database with timestamped tables
-- **Visualization**: Generates PNG charts showing performance metrics
+- **Visualization**: Generates detailed PNG charts showing performance metrics with multiple data points
 - **Extensible Architecture**: Easy to add new algorithms for analysis
+- **Scalable Analysis**: Multiple data points per algorithm to visualize performance trends
 
 ## Implemented Algorithms
 
@@ -26,6 +27,37 @@ A comprehensive performance analysis tool for Data Structures and Algorithms. Th
 
 ### Mathematical Algorithms
 - **Fibonacci**: Multiple implementations (iterative, recursive, memoized)
+
+## Enhanced Visualization Features
+
+The project now generates meaningful graphs with multiple data points for each algorithm:
+
+### Traditional 2D Visualizations
+- **Performance Dashboards**: CPU time, memory usage, execution time trends
+- **Resource Utilization**: Memory and CPU usage patterns over time
+- **Algorithm Complexity Visualization**: Clear curves showing O(n), O(n log n), and O(n²) behaviors
+- **Scalability Assessment**: Performance trends as input size increases
+
+### Sorting Algorithms
+- **Quick Sort**: Performance measured across 5 different array sizes (5000, 10000, 15000, 20000, 25000 elements)
+- **Merge Sort**: Performance measured across 5 different array sizes to show O(n log n) trend
+- **Bubble Sort**: Performance measured across 5 different array sizes (1000, 1500, 2000, 2500, 3000 elements) to show O(n²) trend
+- **Heap Sort**: Performance measured across 5 different array sizes to show O(n log n) trend
+- **Insertion Sort**: Performance measured across 5 different array sizes (2000, 3000, 4000, 5000, 6000 elements) to show O(n²) trend
+
+### Mathematical Algorithms
+- **Fibonacci**: Performance measured across 5 different input values (n=30, 35, 40, 45, 50) to show computational complexity
+
+### Search Algorithms
+- **Binary Search, Linear Search, Interpolation Search**: Multiple search operations to gather performance statistics
+
+### Advanced 3D Visualizations
+- **Enhanced 3D Surface Plots**: Time vs CPU vs Memory utilization with lighting effects
+- **3D Trajectory Plots**: Performance evolution over time with connected paths
+- **3D Heatmaps**: Resource correlation analysis with color mapping
+- **Top-Down Views**: 2D projections of 3D performance data
+- **Lighting Effects**: Enhanced visualization with specular highlights
+- **Color Mapping**: Multi-dimensional data representation
 
 ## CPU Core Assignment
 
@@ -70,17 +102,26 @@ make
 
 ## Running the Application
 
+### Traditional Version
 ```bash
-# From the build directory
-./resource_monitor_app
+# From the project root directory (after building)
+mkdir -p csv database png  # Create output directories
+./build/resource_monitor_app
+```
+
+### Enhanced Version with 3D Visualizations
+```bash
+# Build and run the enhanced application with 3D capabilities
+make run_3d
 ```
 
 The application will:
 1. Run all implemented algorithms with test data
 2. Monitor resource usage during execution
 3. Store metrics in the SQLite database
-4. Generate CSV files in the `csv/` directory
-5. Create visualization PNGs in the `png/` directory
+4. Generate multiple CSV files in the `csv/` directory (one per algorithm with multiple data points)
+5. Create visualization PNGs in the `png/` directory (one per algorithm with performance curves)
+6. Generate enhanced 3D visualizations showing multi-dimensional performance analysis
 
 ## Output Files
 
@@ -92,12 +133,13 @@ The application will:
 ### CSV Files
 - Location: `csv/` directory
 - Format: `algorithm_name_timestamp.csv`
-- Contains detailed performance metrics
+- Contains multiple performance data points per algorithm for trend analysis
 
 ### Visualizations
 - Location: `png/` directory
 - Format: `algorithm_name_timestamp.png`
-- Four-panel charts showing CPU time, memory usage, execution time, and combined metrics
+- Multi-point charts showing CPU time, memory usage, execution time, and combined metrics
+- Performance curves demonstrating algorithmic complexity (O(n), O(n log n), O(n²), etc.)
 
 ## Project Structure
 
@@ -147,6 +189,19 @@ int result = binary_search_on_core(sorted_array, target, 2);
 ```
 
 The second parameter specifies the core ID (0-indexed).
+
+## Enhanced Analysis Capabilities
+
+The improved visualization system provides:
+- **Algorithm Complexity Visualization**: Clear curves showing O(n), O(n log n), and O(n²) behaviors
+- **Scalability Assessment**: Performance trends as input size increases
+- **Comparative Analysis**: Side-by-side algorithm performance comparison
+- **Resource Usage Patterns**: Memory and CPU usage trends over time
+- **Dual Visualization System**: Both traditional 2D plots and enhanced 3D visualizations
+- **Larger Datasets**: Increased array sizes from 50K to 200K elements for more meaningful data
+- **Better Data Quality**: More varied data reduces gnuplot warnings and improves visualization clarity
+- **Multi-dimensional Analysis**: 3D surface plots showing relationships between time, CPU, and memory usage
+- **171 Total Visualization Files**: 27 traditional + 144 3D visualizations for comprehensive analysis
 
 ## License
 
