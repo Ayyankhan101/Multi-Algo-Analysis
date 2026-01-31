@@ -1,216 +1,124 @@
-# C++ Resource Monitoring System for Binary Search
+# DSA Analysis Theory
 
-This is a comprehensive system that monitors, stores, and visualizes resource usage of a binary search algorithm running on a specific CPU core.
+A comprehensive performance analysis tool for Data Structures and Algorithms. This project measures and analyzes the performance of various algorithms including search and sorting algorithms, providing detailed resource usage metrics and visualizations.
 
 ## Features
 
-- **CPU Core Affinity**: Runs on a specific CPU core (core 0 by default)
-- **Resource Monitoring**: Tracks CPU time, memory usage, and execution time
-- **Database Storage**: Stores metrics in SQLite database
-- **Data Export**: Exports data to CSV format
-- **Visualization**: Generates plots using GNUplot
-- **Structured Design**: Modular architecture with clear separation of concerns
+- **Performance Monitoring**: Tracks CPU time, memory usage, and execution time for each algorithm
+- **Multi-core Affinity**: Ensures consistent performance measurements by running on a specific CPU core
+- **Database Storage**: Stores performance metrics in SQLite database with timestamped tables
+- **Visualization**: Generates PNG charts showing performance metrics
+- **Extensible Architecture**: Easy to add new algorithms for analysis
 
-## System Architecture
+## Implemented Algorithms
 
-```
-┌───────────────────────────────────────────────────────┐
-│                 Main Application                        │
-└───────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  ResourceMonitor │    │  DatabaseManager│    │  PlotGenerator  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-       │                         │                         │
-       ▼                         ▼                         ▼
-┌─────────────┐          ┌─────────────┐          ┌─────────────┐
-│  CSV Files  │          │ SQLite DB   │          │  PNG Plots  │
-└─────────────┘          └─────────────┘          └─────────────┘
-```
+### Search Algorithms
+- **Binary Search**: O(log n) search in sorted arrays
+- **Linear Search**: O(n) sequential search
+- **Interpolation Search**: O(log log n) search for uniformly distributed data
 
-## Components
+### Sorting Algorithms
+- **Quick Sort**: O(n log n) average case sorting algorithm
+- **Merge Sort**: O(n log n) guaranteed sorting algorithm
+- **Bubble Sort**: O(n²) simple comparison-based sorting
+- **Heap Sort**: O(n log n) comparison-based sorting using binary heap
+- **Insertion Sort**: O(n²) efficient for small datasets
 
-### 1. ResourceMonitor
-- **Purpose**: Monitors system resources during binary search execution
-- **Metrics Collected**:
-  - CPU time (user time)
-  - Memory usage (maximum resident set size)
-  - Execution time (wall-clock time)
-  - Timestamps
-- **Features**:
-  - Start/stop monitoring
-  - Data collection and storage
-  - CSV export
+### Mathematical Algorithms
+- **Fibonacci**: Multiple implementations (iterative, recursive, memoized)
 
-### 2. DatabaseManager
-- **Database**: SQLite
-- **Table Structure**:
-  ```sql
-  CREATE TABLE resource_metrics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp REAL NOT NULL,
-      cpu_time REAL NOT NULL,
-      memory_usage INTEGER NOT NULL,
-      execution_time REAL NOT NULL
-  )
-  ```
-- **Features**:
-  - Automatic table creation
-  - Data insertion
-  - Query all data
-  - Clear database
+## Prerequisites
 
-### 3. PlotGenerator
-- **Backend**: GNUplot
-- **Output**: PNG images with multiple plots
-- **Visualizations**:
-  - CPU Time Usage
-  - Memory Usage
-  - Execution Time
-  - Combined metrics view
+- C++17 compatible compiler
+- CMake 3.10+
+- SQLite3 development libraries
+- GNUplot (for visualization)
+- Google Test (for unit tests)
 
-## Requirements
-
-- **Compiler**: g++ with C++17 support
-- **Libraries**:
-  - SQLite3 (libsqlite3-dev)
-  - GNUplot (for visualization)
-- **Headers**:
-  - Standard C++ headers
-  - Unix system headers (for resource monitoring)
-
-## Installation
-
-### Ubuntu/Debian
+On Ubuntu/Debian systems:
 ```bash
-sudo apt-get update
-sudo apt-get install g++ sqlite3 libsqlite3-dev gnuplot make
+sudo apt-get install build-essential cmake libsqlite3-dev gnuplot libgtest-dev
 ```
 
-### Fedora/RHEL
-```bash
-sudo dnf install gcc-c++ sqlite sqlite-devel gnuplot make
-```
-
-## Building
+## Build Instructions
 
 ```bash
+# Clone or navigate to the project directory
+mkdir build
+cd build
+cmake ..
 make
 ```
 
-This will compile the application and create the `resource_monitor_app` executable.
-
-## Running
+## Running the Application
 
 ```bash
-make run
-```
-
-Or manually:
-```bash
+# From the build directory
 ./resource_monitor_app
 ```
 
+The application will:
+1. Run all implemented algorithms with test data
+2. Monitor resource usage during execution
+3. Store metrics in the SQLite database
+4. Generate CSV files in the `csv/` directory
+5. Create visualization PNGs in the `png/` directory
+
 ## Output Files
 
-The application generates several output files:
+### Database
+- Location: `database/resource_metrics.db`
+- Tables: Timestamped tables for each algorithm run
+- Columns: timestamp, cpu_time, memory_usage, execution_time
 
-1. **resource_metrics.db** - SQLite database containing all metrics
-2. **resource_metrics.csv** - CSV export of the data
-3. **resource_metrics.png** - Visualization of the metrics
-4. **resource_metrics.dat** - Temporary data file for GNUplot
-5. **resource_metrics.plt** - GNUplot script
+### CSV Files
+- Location: `csv/` directory
+- Format: `algorithm_name_timestamp.csv`
+- Contains detailed performance metrics
 
-## Example Output
+### Visualizations
+- Location: `png/` directory
+- Format: `algorithm_name_timestamp.png`
+- Four-panel charts showing CPU time, memory usage, execution time, and combined metrics
+
+## Project Structure
 
 ```
-Running on CPU core: 0
-Searching for target: 1000
-  Found at index: 333 (value: 999)
-  CPU Time: 0.000123s, Memory: 4567KB, Exec Time: 0.000456s
-Searching for target: 50000
-  Found at index: 16666 (value: 49998)
-  CPU Time: 0.000234s, Memory: 4568KB, Exec Time: 0.000567s
-...
-
-Resource data saved to CSV file.
-Plots generated as 'resource_metrics.png'
-
-All operations completed successfully!
-- Core used: 0
-- Data stored in: resource_metrics.db
-- CSV export: resource_metrics.csv
-- Visualization: resource_metrics.png
+DSA-ANALYSIS-THEORY/
+├── CMakeLists.txt          # Build configuration
+├── Makefile               # Alternative build system
+├── hpp/                   # Header files for algorithms
+│   ├── binary_search_single_core.hpp
+│   ├── linear_search.hpp
+│   ├── interpolation_search.hpp
+│   ├── quick_sort.hpp
+│   ├── merge_sort.hpp
+│   ├── bubble_sort.hpp
+│   ├── heap_sort.hpp
+│   ├── insertion_sort.hpp
+│   ├── fibonacci.hpp
+│   ├── resource_monitor.hpp
+│   ├── database_manager.hpp
+│   └── plot_generator.hpp
+├── src/                   # Source files
+│   └── main_application.cpp
+├── tests/                 # Unit tests
+├── csv/                   # Output directory for CSV files
+├── database/              # Output directory for SQLite database
+├── png/                   # Output directory for plots
+└── docs/                  # Documentation directory
 ```
 
-## Customization
+## Adding New Algorithms
 
-### Change CPU Core
-Modify the `core_id` constant in `main_application.cpp`:
+To add a new algorithm:
 
-```cpp
-const int core_id = 1; // Change from 0 to 1
-```
-
-### Modify Binary Search Parameters
-Change the test data or targets in `main_application.cpp`:
-
-```cpp
-// Change array size or step
-for (int i = 0; i < 2000000; i += 2) { // Larger array, different step
-    sorted_array.push_back(i);
-}
-
-// Change search targets
-std::vector<int> targets = {500, 10000, 500000, 1500000};
-```
-
-## Database Operations
-
-### Query Data
-You can query the database directly:
-
-```bash
-sqlite3 resource_metrics.db "SELECT * FROM resource_metrics;"
-```
-
-### Clear Database
-```bash
-sqlite3 resource_metrics.db "DELETE FROM resource_metrics;"
-```
-
-## Cleaning Up
-
-```bash
-make clean
-```
-
-This removes all compiled files and generated outputs.
-
-## Error Handling
-
-The application includes comprehensive error handling for:
-- Database operations
-- File I/O operations
-- Resource monitoring
-- GNUplot execution
-
-## Performance Considerations
-
-- The system adds minimal overhead to the binary search
-- Database operations are optimized with prepared statements
-- Resource monitoring uses efficient system calls
-- Plotting is done after all measurements are complete
-
-## Future Enhancements
-
-- Add support for multiple CPU cores
-- Implement real-time monitoring
-- Add more detailed memory profiling
-- Support additional database backends
-- Add interactive plot generation
+1. Create a header file in the `hpp/` directory following the existing pattern
+2. Include the header in `src/main_application.cpp`
+3. Add the algorithm to the main execution loop with resource monitoring
+4. Update CMakeLists.txt to include the new library if needed
+5. Create unit tests in the `tests/` directory
 
 ## License
 
-This project is open-source and available for educational and research purposes.
+This project is licensed under the MIT License - see the LICENSE file for details.

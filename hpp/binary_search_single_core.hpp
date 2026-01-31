@@ -48,4 +48,11 @@ int binary_search(const std::vector<int>& arr, int target)
     return -1;
 }
 
+// Function to run binary search on a specific core
+int binary_search_on_core(const std::vector<int>& arr, int target, int core_id = 0)
+{
+    set_cpu_affinity(core_id);  // Set affinity to the specified core
+    return binary_search(arr, target);
+}
+
 #endif // BINARY_SEARCH_SINGLE_CORE_HPP

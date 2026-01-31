@@ -1,0 +1,13 @@
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/resource_monitor_app.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/resource_monitor_tests.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/database_manager_tests.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/plot_generator_tests.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/binary_search_tests.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/integration_tests.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/test.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/edit_cache.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/rebuild_cache.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/list_install_components.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/install.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/install/local.dir
+/home/ayyan/uni_work/SEM-4/DSA-ANALYSIS-THEORY/build/CMakeFiles/install/strip.dir

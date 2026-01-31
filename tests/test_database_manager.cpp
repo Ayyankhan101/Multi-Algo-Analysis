@@ -1,21 +1,21 @@
 #include <gtest/gtest.h>
-#include "../database_manager.hpp"
+#include "../hpp/database_manager.hpp"
 #include <fstream>
 #include <algorithm>
 
 class DatabaseManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        db_manager = DatabaseManager("test_database.db");
-        db_manager.initialize_database();
+        db_manager = new DatabaseManager("test_database.db");
+        db_manager->initialize_database();
     }
 
     void TearDown() override {
-        db_manager.clear_data();
+        delete db_manager;
         std::remove("test_database.db");
     }
 
-    DatabaseManager db_manager;
+    DatabaseManager* db_manager;
 };
 
 TEST_F(DatabaseManagerTest, InitializeDatabase) {
@@ -25,8 +25,10 @@ TEST_F(DatabaseManagerTest, InitializeDatabase) {
 }
 
 TEST_F(DatabaseManagerTest, InsertAndQueryData) {
-    db_manager.insert_resource_data(123456789.0, 0.1, 1024, 0.01);
-    auto data = db_manager.query_all_data();
+    std::string table_name = "test_table";
+    db_manager->create_run_table(table_name);
+    db_manager->insert_resource_data(table_name, 123456789.0, 0.1, 1024, 0.01);
+    auto data = db_manager->query_table_data(table_name);
 
     ASSERT_EQ(data.size(), 2); // Header + 1 row
     EXPECT_NE(data[1][0].find("123456789.0"), std::string::npos);
@@ -35,10 +37,17 @@ TEST_F(DatabaseManagerTest, InsertAndQueryData) {
     EXPECT_NE(data[1][3].find("0.01"), std::string::npos);
 }
 
-TEST_F(DatabaseManagerTest, ClearData) {
-    db_manager.insert_resource_data(123456789.0, 0.1, 1024, 0.01);
-    db_manager.clear_data();
+TEST_F(DatabaseManagerTest, GetTableNames) {
+    std::string table_name = "test_table_2";
+    db_manager->create_run_table(table_name);
+    auto table_names = db_manager->get_table_names();
 
-    auto data = db_manager.query_all_data();
-    ASSERT_EQ(data.size(), 1); // Only header remains
+    bool found = false;
+    for (const auto& name : table_names) {
+        if (name == table_name) {
+            found = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(found);
 }
