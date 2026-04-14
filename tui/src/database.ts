@@ -15,7 +15,7 @@ export class DatabaseService {
   getTableNames(): string[] {
     const stmt = this.db.prepare(`
       SELECT name FROM sqlite_master
-      WHERE type='table' AND (name LIKE 'binary_search_%' OR name LIKE 'linear_search_%' OR name LIKE 'merge_sort_%')
+      WHERE type='table' AND (name LIKE 'binary_search_%' OR name LIKE 'linear_search_%' OR name LIKE 'merge_sort_%' OR name LIKE 'insertion_sort_%' OR name LIKE 'selection_sort_%' OR name LIKE 'bubble_sort_%')
       ORDER BY name DESC
     `);
     return (stmt.all() as Array<{ name: string }>).map(r => r.name);
@@ -26,9 +26,9 @@ export class DatabaseService {
     return tables.map(tableName => {
       const count = this.db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as { count: number };
       // Extract timestamp from table name (e.g., "binary_search_20260414_060305" -> "20260414_060305")
-      const timestamp = tableName.replace(/^(binary_search|linear_search|merge_sort)_/, '');
+      const timestamp = tableName.replace(/^(binary_search|linear_search|merge_sort|insertion_sort|selection_sort|bubble_sort)_/, '');
       // Extract algorithm name from table name
-      const algoName = tableName.match(/^(binary_search|linear_search|merge_sort)_/)?.[1] ?? 'unknown';
+      const algoName = tableName.match(/^(binary_search|linear_search|merge_sort|insertion_sort|selection_sort|bubble_sort)_/)?.[1] ?? 'unknown';
       return {
         timestamp: this.formatTimestamp(timestamp),
         tableName,

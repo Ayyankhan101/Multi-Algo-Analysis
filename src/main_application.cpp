@@ -10,6 +10,9 @@
 #include "binary_search_single_core.hpp"
 #include "linear_search.hpp"
 #include "merge_sort.hpp"
+#include "insertion_sort.hpp"
+#include "selection_sort.hpp"
+#include "bubble_sort.hpp"
 #include "resource_monitor.hpp"
 #include "plot_generator.hpp"
 
@@ -40,7 +43,10 @@ void emit_json_line(const std::string& key_value_pairs) {
 enum class AlgorithmType {
     BINARY_SEARCH,
     LINEAR_SEARCH,
-    MERGE_SORT
+    MERGE_SORT,
+    INSERTION_SORT,
+    SELECTION_SORT,
+    BUBBLE_SORT
 };
 
 std::string algorithm_to_string(AlgorithmType algo) {
@@ -48,6 +54,9 @@ std::string algorithm_to_string(AlgorithmType algo) {
         case AlgorithmType::BINARY_SEARCH: return "binary_search";
         case AlgorithmType::LINEAR_SEARCH: return "linear_search";
         case AlgorithmType::MERGE_SORT: return "merge_sort";
+        case AlgorithmType::INSERTION_SORT: return "insertion_sort";
+        case AlgorithmType::SELECTION_SORT: return "selection_sort";
+        case AlgorithmType::BUBBLE_SORT: return "bubble_sort";
         default: return "unknown";
     }
 }
@@ -62,7 +71,10 @@ std::vector<AlgorithmConfig> get_available_algorithms() {
     return {
         {AlgorithmType::BINARY_SEARCH, "Binary Search", "O(log n) search on sorted array"},
         {AlgorithmType::LINEAR_SEARCH, "Linear Search", "O(n) sequential search"},
-        {AlgorithmType::MERGE_SORT, "Merge Sort", "O(n log n) sorting algorithm"}
+        {AlgorithmType::MERGE_SORT, "Merge Sort", "O(n log n) sorting algorithm"},
+        {AlgorithmType::INSERTION_SORT, "Insertion Sort", "O(n^2) simple sorting algorithm"},
+        {AlgorithmType::SELECTION_SORT, "Selection Sort", "O(n^2) in-place sorting algorithm"},
+        {AlgorithmType::BUBBLE_SORT, "Bubble Sort", "O(n^2) simple comparison sorting"}
     };
 }
 
@@ -80,6 +92,24 @@ void run_merge_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
     (void)monitor; // Monitoring is handled externally
     std::vector<int> data_copy = data;
     merge_sort(data_copy);
+}
+
+void run_insertion_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
+    (void)monitor; // Monitoring is handled externally
+    std::vector<int> data_copy = data;
+    insertion_sort(data_copy);
+}
+
+void run_selection_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
+    (void)monitor; // Monitoring is handled externally
+    std::vector<int> data_copy = data;
+    selection_sort(data_copy);
+}
+
+void run_bubble_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
+    (void)monitor; // Monitoring is handled externally
+    std::vector<int> data_copy = data;
+    bubble_sort(data_copy);
 }
 
 int main(int argc, char* argv[])
@@ -116,6 +146,12 @@ int main(int argc, char* argv[])
                         selected_algo = AlgorithmType::LINEAR_SEARCH;
                     } else if (algo_name == "merge" || algo_name == "merge_sort") {
                         selected_algo = AlgorithmType::MERGE_SORT;
+                    } else if (algo_name == "insertion" || algo_name == "insertion_sort") {
+                        selected_algo = AlgorithmType::INSERTION_SORT;
+                    } else if (algo_name == "selection" || algo_name == "selection_sort") {
+                        selected_algo = AlgorithmType::SELECTION_SORT;
+                    } else if (algo_name == "bubble" || algo_name == "bubble_sort") {
+                        selected_algo = AlgorithmType::BUBBLE_SORT;
                     } else {
                         std::cerr << "Unknown algorithm: " << algo_name << std::endl;
                         return 1;
@@ -269,6 +305,15 @@ int main(int argc, char* argv[])
                         case AlgorithmType::MERGE_SORT:
                             run_merge_sort(monitor, data, 0);
                             break;
+                        case AlgorithmType::INSERTION_SORT:
+                            run_insertion_sort(monitor, data, 0);
+                            break;
+                        case AlgorithmType::SELECTION_SORT:
+                            run_selection_sort(monitor, data, 0);
+                            break;
+                        case AlgorithmType::BUBBLE_SORT:
+                            run_bubble_sort(monitor, data, 0);
+                            break;
                     }
                     
                     // Sample current metrics
@@ -297,7 +342,10 @@ int main(int argc, char* argv[])
                         result = linear_search(data, target);
                         break;
                     case AlgorithmType::MERGE_SORT:
-                        // Merge sort doesn't have a result index
+                    case AlgorithmType::INSERTION_SORT:
+                    case AlgorithmType::SELECTION_SORT:
+                    case AlgorithmType::BUBBLE_SORT:
+                        // Sort algorithms don't have a result index
                         result = -1;
                         break;
                 }
@@ -337,6 +385,15 @@ int main(int argc, char* argv[])
                     case AlgorithmType::MERGE_SORT:
                         run_merge_sort(monitor, data, 0);
                         break;
+                    case AlgorithmType::INSERTION_SORT:
+                        run_insertion_sort(monitor, data, 0);
+                        break;
+                    case AlgorithmType::SELECTION_SORT:
+                        run_selection_sort(monitor, data, 0);
+                        break;
+                    case AlgorithmType::BUBBLE_SORT:
+                        run_bubble_sort(monitor, data, 0);
+                        break;
                 }
 
                 // End monitoring and get data
@@ -349,7 +406,10 @@ int main(int argc, char* argv[])
                 #endif
 
                 // Print result info
-                if (selected_algo != AlgorithmType::MERGE_SORT) {
+                bool is_search_algo = (selected_algo == AlgorithmType::BINARY_SEARCH || 
+                                       selected_algo == AlgorithmType::LINEAR_SEARCH);
+                
+                if (is_search_algo) {
                     int result = (selected_algo == AlgorithmType::BINARY_SEARCH)
                         ? binary_search(data, target)
                         : linear_search(data, target);

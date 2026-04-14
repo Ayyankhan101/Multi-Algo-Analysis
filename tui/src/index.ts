@@ -224,7 +224,7 @@ async function main() {
             } else {
               await showExecutionScreen(output.results, output.rawOutput, 'merge_sort');
             }
-            
+
             // Show export option
             await showExportScreen(output.results, 'merge_sort');
           } else {
@@ -248,7 +248,151 @@ async function main() {
         }
         break;
 
-      case 3: // View Historical Runs
+      case 3: // Run Insertion Sort
+        try {
+          const params = settings.algorithmParams;
+          await showLiveExecutionScreen(settings.binaryPath, 'insertion_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
+
+          const output = await runAlgorithm(settings.binaryPath, 'insertion_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
+
+          if (output.results.length > 0) {
+            let metrics: any[] = [];
+            if (output.csvFile && fs.existsSync(path.join(settings.projectRoot, output.csvFile))) {
+              try {
+                metrics = await readCSVFile(path.join(settings.projectRoot, output.csvFile));
+                await showEnhancedResults(output.results, metrics, 'insertion_sort');
+              } catch (err) {
+                await showExecutionScreen(output.results, output.rawOutput, 'insertion_sort');
+              }
+            } else {
+              await showExecutionScreen(output.results, output.rawOutput, 'insertion_sort');
+            }
+            await showExportScreen(output.results, 'insertion_sort');
+          } else {
+            console.log(chalk.yellow('No results captured. Check the binary output.'));
+          }
+
+          if (!db) {
+            try {
+              const fs = require('fs');
+              if (fs.existsSync(settings.databasePath)) {
+                db = new DatabaseService(settings.databasePath);
+              }
+            } catch (err) { /* Ignore */ }
+          }
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Error running algorithm: ${err}`));
+          await waitForKeypress();
+        }
+        break;
+
+      case 4: // Run Selection Sort
+        try {
+          const params = settings.algorithmParams;
+          await showLiveExecutionScreen(settings.binaryPath, 'selection_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
+
+          const output = await runAlgorithm(settings.binaryPath, 'selection_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
+
+          if (output.results.length > 0) {
+            let metrics: any[] = [];
+            if (output.csvFile && fs.existsSync(path.join(settings.projectRoot, output.csvFile))) {
+              try {
+                metrics = await readCSVFile(path.join(settings.projectRoot, output.csvFile));
+                await showEnhancedResults(output.results, metrics, 'selection_sort');
+              } catch (err) {
+                await showExecutionScreen(output.results, output.rawOutput, 'selection_sort');
+              }
+            } else {
+              await showExecutionScreen(output.results, output.rawOutput, 'selection_sort');
+            }
+            await showExportScreen(output.results, 'selection_sort');
+          } else {
+            console.log(chalk.yellow('No results captured. Check the binary output.'));
+          }
+
+          if (!db) {
+            try {
+              const fs = require('fs');
+              if (fs.existsSync(settings.databasePath)) {
+                db = new DatabaseService(settings.databasePath);
+              }
+            } catch (err) { /* Ignore */ }
+          }
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Error running algorithm: ${err}`));
+          await waitForKeypress();
+        }
+        break;
+
+      case 5: // Run Bubble Sort
+        try {
+          const params = settings.algorithmParams;
+          await showLiveExecutionScreen(settings.binaryPath, 'bubble_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
+
+          const output = await runAlgorithm(settings.binaryPath, 'bubble_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
+
+          if (output.results.length > 0) {
+            let metrics: any[] = [];
+            if (output.csvFile && fs.existsSync(path.join(settings.projectRoot, output.csvFile))) {
+              try {
+                metrics = await readCSVFile(path.join(settings.projectRoot, output.csvFile));
+                await showEnhancedResults(output.results, metrics, 'bubble_sort');
+              } catch (err) {
+                await showExecutionScreen(output.results, output.rawOutput, 'bubble_sort');
+              }
+            } else {
+              await showExecutionScreen(output.results, output.rawOutput, 'bubble_sort');
+            }
+            await showExportScreen(output.results, 'bubble_sort');
+          } else {
+            console.log(chalk.yellow('No results captured. Check the binary output.'));
+          }
+
+          if (!db) {
+            try {
+              const fs = require('fs');
+              if (fs.existsSync(settings.databasePath)) {
+                db = new DatabaseService(settings.databasePath);
+              }
+            } catch (err) { /* Ignore */ }
+          }
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Error running algorithm: ${err}`));
+          await waitForKeypress();
+        }
+        break;
+
+      case 6: // View Historical Runs
         if (!db) {
           console.log(chalk.yellow('\n⚠ No database available. Run the algorithm first.'));
           await new Promise<void>(resolve => setTimeout(resolve, 2000));
@@ -257,21 +401,21 @@ async function main() {
         }
         break;
 
-      case 4: // View Latest Results
+      case 7: // View Latest Results
         await showLatestResults(settings.csvPath);
         break;
 
-      case 5: // System Info
+      case 8: // System Info
         await showSystemInfo(settings);
         break;
 
-      case 6: // Settings
+      case 9: // Settings
         settings = await showSettingsScreen(settings);
         console.log(chalk.green('\n✓ Settings updated'));
         await new Promise<void>(resolve => setTimeout(resolve, 1000));
         break;
 
-      case 7: // Exit
+      case 10: // Exit
         running = false;
         console.log(chalk.green('\n👋 Goodbye!\n'));
         break;

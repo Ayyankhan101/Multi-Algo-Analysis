@@ -31,6 +31,9 @@ function getAlgorithmDescription(name: string): string {
     case 'binary_search': return 'O(log n) search on sorted array';
     case 'linear_search': return 'O(n) sequential search';
     case 'merge_sort': return 'O(n log n) sorting algorithm';
+    case 'insertion_sort': return 'O(n^2) simple sorting algorithm';
+    case 'selection_sort': return 'O(n^2) in-place sorting algorithm';
+    case 'bubble_sort': return 'O(n^2) simple comparison sorting';
     default: return '';
   }
 }
