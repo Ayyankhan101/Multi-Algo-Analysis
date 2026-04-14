@@ -11,16 +11,14 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
 
     let params: AlgorithmParams = { ...settings.algorithmParams };
     let focusedField = 0;
-    let isEditing = false;
-    let inputBuffer = '';
 
     const fields = [
       { key: 'dataSize' as const, label: 'Data Size', desc: 'Number of elements to generate' },
       { key: 'dataStep' as const, label: 'Data Step', desc: 'Step between values' },
       { key: 'cpuCore' as const, label: 'CPU Core', desc: 'Core ID to bind' },
       { key: 'totalRuns' as const, label: 'Total Runs', desc: 'Number of iterations' },
-      { key: 'useCustomTargets' as const, label: 'Use Custom Targets', desc: 'Enter to toggle' },
-      { key: 'customTargets' as const, label: 'Target Values', desc: 'Enter to edit' },
+      { key: 'useCustomTargets' as const, label: 'Use Custom Targets', desc: 'Press Enter to toggle' },
+      { key: 'customTargets' as const, label: 'Target Values', desc: 'Press Enter to edit' },
     ];
 
     // Header
@@ -34,85 +32,92 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       align: 'center',
     });
 
-    // Content area
-    const contentBox = blessed.box({
+    // Create list for navigation
+    const listItems = fields.map((f, i) => `${i === focusedField ? '▸' : ' '} ${f.label}: ${
+      f.key === 'useCustomTargets' ? (params[f.key] ? 'Yes' : 'No') :
+      f.key === 'customTargets' ? (params[f.key] as number[]).join(', ') :
+      String(params[f.key])
+    }`);
+
+    const settingsList = blessed.list({
       top: 2,
-      left: 0,
-      width: '100%',
-      height: '100%-5',
+      left: '5%',
+      width: '90%',
+      height: fields.length + 2,
+      keys: true,
+      vi: true,
+      mouse: true,
       tags: true,
-      content: renderContent(),
+      items: listItems,
+      style: {
+        selected: {
+          bg: 'blue',
+          fg: 'white',
+        },
+        item: {
+          fg: 'white',
+        },
+      },
     });
 
-    // Separator line
-    const separator = blessed.box({
-      bottom: 3,
-      left: 0,
-      width: '100%',
-      height: 1,
-      content: '{gray-fg}────────────────────────────────────────────────────────────────{/gray-fg}',
+    // Description box
+    const descBox = blessed.box({
+      top: fields.length + 5,
+      left: '5%',
+      width: '90%',
+      height: 2,
       tags: true,
+      align: 'center',
+      content: `{gray-fg}${fields[0].desc}{/gray-fg}`,
     });
 
     // Instructions
     const instructions = blessed.box({
-      bottom: 2,
+      bottom: 0,
       left: 0,
       width: '100%',
       height: 1,
-      content: '{gray-fg}S: Save | R: Reset | Q: Quit | Up/Down: Navigate | Enter: Edit{/gray-fg}',
+      content: '{gray-fg}S: Save | R: Reset | Q: Quit | ↑/↓: Navigate | Enter: Edit/Toggle | Esc: Back{/gray-fg}',
       tags: true,
       align: 'center',
     });
 
     screen.append(header);
-    screen.append(contentBox);
-    screen.append(separator);
+    screen.append(settingsList);
+    screen.append(descBox);
     screen.append(instructions);
 
-    screen.key(['s'], () => { if (!isEditing) { settings.algorithmParams = params; resolve(settings); screen.destroy(); } });
-    screen.key(['r'], () => { if (!isEditing) { resetToDefaults(); } });
-    screen.key(['q'], () => { if (!isEditing) { resolve(settings); screen.destroy(); } });
-    screen.key(['up', 'S-tab'], () => { if (!isEditing) { focusedField = (focusedField - 1 + fields.length) % fields.length; render(); } });
-    screen.key(['down', 'tab'], () => { if (!isEditing) { focusedField = (focusedField + 1) % fields.length; render(); } });
+    settingsList.select(0);
+    settingsList.focus();
+
+    // Key handlers
+    screen.key(['s'], () => { settings.algorithmParams = params; resolve(settings); screen.destroy(); });
+    screen.key(['r'], () => { resetToDefaults(); });
+    screen.key(['q', 'escape'], () => { resolve(settings); screen.destroy(); });
+
+    settingsList.on('select', (item, index) => {
+      focusedField = index;
+      descBox.setContent(`{gray-fg}${fields[index].desc}{/gray-fg}`);
+      screen.render();
+    });
+
+    settingsList.on('item change', (item, index) => {
+      focusedField = index;
+      descBox.setContent(`{gray-fg}${fields[index].desc}{/gray-fg}`);
+      screen.render();
+    });
 
     screen.key(['enter'], () => {
       const field = fields[focusedField].key;
-      
+
       if (field === 'useCustomTargets') {
         params.useCustomTargets = !params.useCustomTargets;
-        render();
+        updateList();
+        screen.render();
       } else if (field === 'customTargets') {
         showCustomTargetsDialog();
       } else {
-        isEditing = true;
-        inputBuffer = String(params[field]);
-        render();
-      }
-    });
-
-    screen.key(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (ch) => {
-      if (!isEditing) return;
-      if (inputBuffer.length < 12) {
-        inputBuffer += ch;
-        render();
-      }
-    });
-
-    screen.key(['backspace', 'delete'], () => {
-      if (!isEditing || inputBuffer.length === 0) return;
-      inputBuffer = inputBuffer.slice(0, -1);
-      render();
-    });
-
-    screen.key(['escape', 'C-c'], () => {
-      if (isEditing) {
-        isEditing = false;
-        inputBuffer = '';
-        render();
-      } else {
-        resolve(settings);
-        screen.destroy();
+        showNumberEditDialog(field);
       }
     });
 
@@ -122,116 +127,171 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       const { getDefaultAlgorithmParams } = require('../settings');
       params = getDefaultAlgorithmParams();
       focusedField = 0;
-      isEditing = false;
-      inputBuffer = '';
-      render();
-    }
-
-    function render() {
-      contentBox.setContent(renderContent());
-      if (isEditing) {
-        instructions.setContent('{yellow-fg}Editing: Type digits, Enter to confirm, Esc to cancel{/yellow-fg}');
-      } else {
-        instructions.setContent('{gray-fg}S: Save | R: Reset | Q: Quit | Up/Down: Navigate | Enter: Edit{/gray-fg}');
-      }
+      updateList();
       screen.render();
     }
 
-    function renderContent(): string {
-      const lines: string[] = [];
-      
-      fields.forEach((field, idx) => {
-        const isFocused = focusedField === idx;
-        const value = params[field.key];
+    function updateList() {
+      const items = fields.map((f, i) => `${i === focusedField ? '▸' : ' '} ${f.label}: ${
+        f.key === 'useCustomTargets' ? (params[f.key] ? '{green-fg}Yes{/green-fg}' : 'No') :
+        f.key === 'customTargets' ? (params[f.key] as number[]).join(', ') :
+        String(params[f.key])
+      }`);
+      settingsList.setItems(items);
+      settingsList.select(focusedField);
+    }
 
-        // Field label
-        const marker = isFocused ? '>' : ' ';
-        lines.push(`{bold}${marker} ${field.label}{/bold}`);
+    function showNumberEditDialog(fieldKey: keyof AlgorithmParams) {
+      const field = fields.find(f => f.key === fieldKey)!;
+      let currentValue = String(params[fieldKey]);
 
-        // Field value
-        if (field.key === 'useCustomTargets') {
-          const display = value ? '{green-fg}[✓] Yes{/green-fg}' : '[ ] No';
-          lines.push(`    ${isFocused ? `{bg-blue} ${display} {/bg-blue}` : display}`);
-        } else if (field.key === 'customTargets') {
-          const display = (value as number[]).join(', ');
-          lines.push(`    ${isFocused ? `{bg-blue} ${display} {/bg-blue}` : display}`);
-        } else {
-          const display = String(value);
-          if (isEditing && isFocused) {
-            lines.push(`    {bg-blue} ${inputBuffer || '...'} {/bg-blue}`);
-          } else {
-            lines.push(`    ${isFocused ? `{bg-blue} ${display} {/bg-blue}` : display}`);
-          }
-        }
-
-        // Description
-        lines.push(`    {gray-fg}${field.desc}{/gray-fg}`);
-        lines.push('');
+      const form = blessed.form({
+        top: 'center',
+        left: 'center',
+        width: '50%',
+        height: 8,
+        keys: true,
+        mouse: true,
+        border: { type: 'line' },
+        style: { border: { fg: 'cyan' } },
+        tags: true,
       });
 
-      return lines.join('\n');
+      const title = blessed.box({
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: 1,
+        content: `  {bold}Edit ${field.label}{/bold}`,
+        tags: true,
+      });
+
+      const textBox = blessed.textbox({
+        top: 2,
+        left: '10%',
+        width: '80%',
+        height: 1,
+        value: currentValue,
+        inputOnFocus: true,
+        border: { type: 'line' },
+        style: {
+          focus: {
+            border: { fg: 'blue' },
+          },
+        },
+      });
+
+      const helpText = blessed.box({
+        top: 4,
+        left: 0,
+        width: '100%',
+        height: 1,
+        content: '  {gray-fg}Enter: confirm | Esc: cancel{/gray-fg}',
+        tags: true,
+        align: 'center',
+      });
+
+      form.append(title);
+      form.append(textBox);
+      form.append(helpText);
+      screen.append(form);
+      textBox.focus();
+      screen.render();
+
+      textBox.on('submit', (val: string) => {
+        const num = parseInt(val);
+        if (!isNaN(num) && num >= 0) {
+          (params as any)[fieldKey] = num;
+          updateList();
+        }
+        screen.remove(form);
+        settingsList.focus();
+        screen.render();
+      });
+
+      const escHandler = () => {
+        screen.remove(form);
+        screen.removeListener('escape', escHandler);
+        settingsList.focus();
+        screen.render();
+      };
+      screen.key(['escape'], escHandler);
     }
 
     function showCustomTargetsDialog() {
-      isEditing = true;
-      inputBuffer = params.customTargets.join(', ');
+      let currentValue = params.customTargets.join(', ');
 
-      const promptBox = blessed.box({
+      const form = blessed.form({
         top: 'center',
         left: 'center',
         width: '60%',
         height: 8,
-        tags: true,
+        keys: true,
+        mouse: true,
         border: { type: 'line' },
         style: { border: { fg: 'cyan' } },
-        content: `  {bold}Edit Target Values{/bold}\n\n  {bg-blue} ${inputBuffer} {/bg-blue}\n\n  {gray-fg}Type numbers separated by commas{/gray-fg}\n  {gray-fg}Enter: confirm | Esc: cancel{/gray-fg}`,
+        tags: true,
       });
 
-      screen.append(promptBox);
+      const title = blessed.box({
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: 1,
+        content: '  {bold}Edit Target Values{/bold}',
+        tags: true,
+      });
+
+      const textBox = blessed.textbox({
+        top: 2,
+        left: '5%',
+        width: '90%',
+        height: 1,
+        value: currentValue,
+        inputOnFocus: true,
+        border: { type: 'line' },
+        style: {
+          focus: {
+            border: { fg: 'blue' },
+          },
+        },
+      });
+
+      const helpText = blessed.box({
+        top: 4,
+        left: 0,
+        width: '100%',
+        height: 1,
+        content: '  {gray-fg}Enter numbers separated by commas | Enter: confirm | Esc: cancel{/gray-fg}',
+        tags: true,
+        align: 'center',
+      });
+
+      form.append(title);
+      form.append(textBox);
+      form.append(helpText);
+      screen.append(form);
+      textBox.focus();
       screen.render();
 
-      function cleanup() {
-        screen.remove(promptBox);
-        isEditing = false;
-      }
-
-      const enterHandler = () => {
-        cleanup();
-        const parts = inputBuffer.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n > 0);
+      textBox.on('submit', (val: string) => {
+        const parts = val.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n > 0);
         if (parts.length > 0) {
           params.customTargets = parts;
+          updateList();
         }
-        render();
-      };
+        screen.remove(form);
+        settingsList.focus();
+        screen.render();
+      });
 
       const escHandler = () => {
-        cleanup();
-        render();
+        screen.remove(form);
+        screen.removeListener('escape', escHandler);
+        settingsList.focus();
+        screen.render();
       };
-
-      const inputHandler = (ch: string) => {
-        if (inputBuffer.length < 100 && /[0-9, ]/.test(ch)) {
-          inputBuffer += ch;
-          promptBox.setContent(`  {bold}Edit Target Values{/bold}\n\n  {bg-blue} ${inputBuffer} {/bg-blue}\n\n  {gray-fg}Type numbers separated by commas{/gray-fg}\n  {gray-fg}Enter: confirm | Esc: cancel{/gray-fg}`);
-          screen.render();
-        }
-      };
-
-      const backspaceHandler = () => {
-        if (inputBuffer.length > 0) {
-          inputBuffer = inputBuffer.slice(0, -1);
-          promptBox.setContent(`  {bold}Edit Target Values{/bold}\n\n  {bg-blue} ${inputBuffer || '...'} {/bg-blue}\n\n  {gray-fg}Type numbers separated by commas{/gray-fg}\n  {gray-fg}Enter: confirm | Esc: cancel{/gray-fg}`);
-          screen.render();
-        }
-      };
-
-      screen.key(['enter'], enterHandler);
-      screen.key(['escape', 'C-c'], escHandler);
-      screen.key(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ','], inputHandler);
-      screen.key(['backspace', 'delete'], backspaceHandler);
-
-      // Store handlers to remove later
-      (screen as any)._customTargetHandlers = { enterHandler, escHandler, inputHandler, backspaceHandler };
+      screen.key(['escape'], escHandler);
     }
   });
 }
