@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { AppSettings } from './types';
+import { AppSettings, AlgorithmParams } from './types';
 
 export function resolveProjectRoot(): string {
   // Go up two levels from tui/dist/ directory to project root
@@ -8,15 +8,27 @@ export function resolveProjectRoot(): string {
   return path.resolve(__dirname, '../..');
 }
 
+export function getDefaultAlgorithmParams(): AlgorithmParams {
+  return {
+    dataSize: 1000000,
+    dataStep: 3,
+    cpuCore: 0,
+    totalRuns: 5,
+    customTargets: [1000, 50000, 100000, 500000, 999999],
+    useCustomTargets: false,
+  };
+}
+
 export function getDefaultSettings(): AppSettings {
   const root = resolveProjectRoot();
-  
+
   return {
     projectRoot: root,
     databasePath: path.join(root, 'database', 'resource_metrics.db'),
     csvPath: path.join(root, 'csv'),
     pngPath: path.join(root, 'png'),
     binaryPath: path.join(root, 'resource_monitor_app'),
+    algorithmParams: getDefaultAlgorithmParams(),
   };
 }
 

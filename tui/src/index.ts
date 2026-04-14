@@ -3,14 +3,20 @@
 import { getDefaultSettings, validateEnvironment } from './settings';
 import { showMainMenu } from './ui/main-menu';
 import { showExecutionScreen } from './ui/execution-screen';
+import { showLiveExecutionScreen } from './ui/live-execution';
+import { showSettingsScreen } from './ui/settings-screen';
 import { showHistoricalRuns } from './ui/historical-runs';
 import { showLatestResults } from './ui/latest-results';
 import { showSystemInfo } from './ui/system-info';
 import { showLoadingIndeterminate } from './ui/loading';
-import { runAlgorithm } from './runner';
+import { showEnhancedResults } from './ui/visualizations';
+import { showExportScreen } from './ui/export-screen';
+import { runAlgorithm, readCSVFile } from './runner';
 import { DatabaseService } from './database';
 import chalk from 'chalk';
 import figlet from 'figlet';
+import fs from 'fs';
+import path from 'path';
 
 async function waitForKeypress(): Promise<void> {
   return new Promise<void>(resolve => {
@@ -47,7 +53,7 @@ async function main() {
   console.log(chalk.green('Resource Monitoring Dashboard v1.0.0\n'));
 
   // Initialize settings
-  const settings = getDefaultSettings();
+  let settings = getDefaultSettings();
   
   // Validate environment
   const issues = validateEnvironment(settings);
@@ -76,14 +82,40 @@ async function main() {
     switch (choice) {
       case 0: // Run Binary Search
         try {
-          const loading = showLoadingIndeterminate('Executing Binary Search...');
+          const params = settings.algorithmParams;
+          await showLiveExecutionScreen(settings.binaryPath, 'binary_search', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+            customTargets: params.useCustomTargets ? params.customTargets : undefined,
+          });
 
-          const output = await runAlgorithm(settings.binaryPath, 'binary_search');
-
-          loading.close();
+          // Also run normally to capture results for display
+          const output = await runAlgorithm(settings.binaryPath, 'binary_search', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+            customTargets: params.useCustomTargets ? params.customTargets : undefined,
+          });
 
           if (output.results.length > 0) {
-            await showExecutionScreen(output.results, output.rawOutput, 'binary_search');
+            // Try to load metrics from CSV for enhanced visualization
+            let metrics: any[] = [];
+            if (output.csvFile && fs.existsSync(path.join(settings.projectRoot, output.csvFile))) {
+              try {
+                metrics = await readCSVFile(path.join(settings.projectRoot, output.csvFile));
+                await showEnhancedResults(output.results, metrics, 'binary_search');
+              } catch (err) {
+                await showExecutionScreen(output.results, output.rawOutput, 'binary_search');
+              }
+            } else {
+              await showExecutionScreen(output.results, output.rawOutput, 'binary_search');
+            }
+            
+            // Show export option
+            await showExportScreen(output.results, 'binary_search');
           } else {
             console.log(chalk.yellow('No results captured. Check the binary output.'));
           }
@@ -107,14 +139,40 @@ async function main() {
 
       case 1: // Run Linear Search
         try {
-          const loading = showLoadingIndeterminate('Executing Linear Search...');
+          const params = settings.algorithmParams;
+          await showLiveExecutionScreen(settings.binaryPath, 'linear_search', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+            customTargets: params.useCustomTargets ? params.customTargets : undefined,
+          });
 
-          const output = await runAlgorithm(settings.binaryPath, 'linear_search');
-
-          loading.close();
+          // Also run normally to capture results for display
+          const output = await runAlgorithm(settings.binaryPath, 'linear_search', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+            customTargets: params.useCustomTargets ? params.customTargets : undefined,
+          });
 
           if (output.results.length > 0) {
-            await showExecutionScreen(output.results, output.rawOutput, 'linear_search');
+            // Try to load metrics from CSV for enhanced visualization
+            let metrics: any[] = [];
+            if (output.csvFile && fs.existsSync(path.join(settings.projectRoot, output.csvFile))) {
+              try {
+                metrics = await readCSVFile(path.join(settings.projectRoot, output.csvFile));
+                await showEnhancedResults(output.results, metrics, 'linear_search');
+              } catch (err) {
+                await showExecutionScreen(output.results, output.rawOutput, 'linear_search');
+              }
+            } else {
+              await showExecutionScreen(output.results, output.rawOutput, 'linear_search');
+            }
+            
+            // Show export option
+            await showExportScreen(output.results, 'linear_search');
           } else {
             console.log(chalk.yellow('No results captured. Check the binary output.'));
           }
@@ -138,14 +196,37 @@ async function main() {
 
       case 2: // Run Merge Sort
         try {
-          const loading = showLoadingIndeterminate('Executing Merge Sort...');
+          const params = settings.algorithmParams;
+          await showLiveExecutionScreen(settings.binaryPath, 'merge_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
 
-          const output = await runAlgorithm(settings.binaryPath, 'merge_sort');
-
-          loading.close();
+          // Also run normally to capture results for display
+          const output = await runAlgorithm(settings.binaryPath, 'merge_sort', {
+            dataSize: params.dataSize,
+            dataStep: params.dataStep,
+            cpuCore: params.cpuCore,
+            totalRuns: params.totalRuns,
+          });
 
           if (output.results.length > 0) {
-            await showExecutionScreen(output.results, output.rawOutput, 'merge_sort');
+            let metrics: any[] = [];
+            if (output.csvFile && fs.existsSync(path.join(settings.projectRoot, output.csvFile))) {
+              try {
+                metrics = await readCSVFile(path.join(settings.projectRoot, output.csvFile));
+                await showEnhancedResults(output.results, metrics, 'merge_sort');
+              } catch (err) {
+                await showExecutionScreen(output.results, output.rawOutput, 'merge_sort');
+              }
+            } else {
+              await showExecutionScreen(output.results, output.rawOutput, 'merge_sort');
+            }
+            
+            // Show export option
+            await showExportScreen(output.results, 'merge_sort');
           } else {
             console.log(chalk.yellow('No results captured. Check the binary output.'));
           }
@@ -184,7 +265,13 @@ async function main() {
         await showSystemInfo(settings);
         break;
 
-      case 6: // Exit
+      case 6: // Settings
+        settings = await showSettingsScreen(settings);
+        console.log(chalk.green('\n✓ Settings updated'));
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        break;
+
+      case 7: // Exit
         running = false;
         console.log(chalk.green('\n👋 Goodbye!\n'));
         break;

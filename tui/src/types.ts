@@ -33,10 +33,20 @@ export interface HistoricalRun {
   metricCount: number;
 }
 
+export interface AlgorithmParams {
+  dataSize: number;
+  dataStep: number;
+  cpuCore: number;
+  totalRuns: number;
+  customTargets: number[];
+  useCustomTargets: boolean;
+}
+
 export interface AppSettings {
   projectRoot: string;
   databasePath: string;
   csvPath: string;
   pngPath: string;
   binaryPath: string;
+  algorithmParams: AlgorithmParams;
 }

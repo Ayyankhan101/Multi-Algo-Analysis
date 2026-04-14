@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Full application with TUI
+  multi-algo-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Persist data between runs
+      - ./database:/app/database
+      - ./csv:/app/csv
+      - ./png:/app/png
+      - ./exports:/app/exports
+    working_dir: /app
+    command: ["sh", "-c", "cd /app/tui && npm start"]
+    profiles:
+      - tui
+
+  # Run specific algorithm with JSON output
+  multi-algo-binary:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./database:/app/database
+      - ./csv:/app/csv
+      - ./png:/app/png
+    working_dir: /app
+    command: ["/app/resource_monitor_app", "--algorithm", "binary_search", "--json"]
+    profiles:
+      - cli
+
+  # Development environment
+  multi-algo-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - /app/tui/node_modules
+    environment:
+      - NODE_ENV=development
+    working_dir: /app
+    command: ["sh", "-c", "make && cd tui && npm install && npm run build && npm start"]
+    profiles:
+      - dev

@@ -20,6 +20,7 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
       { label: 'View Historical Runs', description: 'Browse past execution results' },
       { label: 'View Latest Results', description: 'Show most recent execution data' },
       { label: 'System Info', description: 'Display project and environment info' },
+      { label: 'Settings', description: 'Configure algorithm parameters' },
       { label: 'Exit', description: 'Close the application' },
     ];
 
@@ -94,7 +95,7 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
       screen.destroy();
     });
 
-    screen.key(['1', '2', '3', '4', '5', '6', '7'], (ch) => {
+    screen.key(['1', '2', '3', '4', '5', '6', '7', '8'], (ch) => {
       const idx = parseInt(ch) - 1;
       if (idx >= 0 && idx < options.length) {
         resolve(idx);

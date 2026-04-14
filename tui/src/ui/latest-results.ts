@@ -1,7 +1,8 @@
 import blessed from 'blessed';
-import { ResourceMetric } from '../types';
+import { ResourceMetric, RunResult } from '../types';
 import { readCSVFile, findLatestCSV } from '../runner';
 import path from 'path';
+import { showEnhancedResults, generatePerformanceTrend, generateSparkline } from './visualizations';
 
 export async function showLatestResults(csvDir: string): Promise<void> {
   const screen = blessed.screen({
@@ -47,25 +48,28 @@ export async function showLatestResults(csvDir: string): Promise<void> {
   });
 
   // Table header
+  const tableHeaderY = 3;
   const tableHeader = blessed.box({
-    top: 3,
+    top: tableHeaderY,
     left: '5%',
     width: '90%',
     height: 1,
-    content: '{bold}{cyan-fg}#   Timestamp        CPU Time(s)      Memory(KB)   Exec Time(s){/cyan-fg}{/bold}',
+    content: '{bold}{cyan-fg}#   | Timestamp        | CPU Time(s)      | Memory(KB)   | Exec Time(s){/cyan-fg}{/bold}',
     tags: true,
   });
 
   // Metrics display
-  const metricsContent = metrics.map((m, i) => 
-    ` ${String(i + 1).padEnd(3)} ${m.timestamp.toFixed(2).padEnd(16)} ${m.cpu_time.toExponential(2).padEnd(14)} ${String(m.memory_usage).padEnd(11)} ${m.execution_time.toExponential(2)}`
+  const metricsY = tableHeaderY + 2;
+  const metricsHeight = Math.min(metrics.length + 1, 12);
+  const metricsContent = metrics.map((m, i) =>
+    ` ${String(i + 1).padStart(3)} | ${m.timestamp.toFixed(2).padEnd(16)} | ${m.cpu_time.toExponential(2).padEnd(14)} | ${String(m.memory_usage).padEnd(11)} | ${m.execution_time.toExponential(2)}`
   ).join('\n');
 
   const metricsBox = blessed.box({
-    top: 5,
+    top: metricsY,
     left: '5%',
     width: '90%',
-    height: Math.min(metrics.length + 2, 15),
+    height: metricsHeight,
     content: metricsContent,
     tags: true,
   });
@@ -77,11 +81,12 @@ export async function showLatestResults(csvDir: string): Promise<void> {
   const minMem = Math.min(...metrics.map(m => m.memory_usage));
   const maxMem = Math.max(...metrics.map(m => m.memory_usage));
 
+  const summaryY = metricsY + metricsHeight + 1;
   const summary = blessed.box({
-    top: metrics.length + 7,
+    top: summaryY,
     left: '5%',
     width: '90%',
-    height: 8,
+    height: 7,
     tags: true,
     border: {
       type: 'line',
@@ -99,28 +104,6 @@ export async function showLatestResults(csvDir: string): Promise<void> {
   Avg Exec Time:  {cyan-fg}${avgExec.toExponential(2)}s{/cyan-fg}`,
   });
 
-  // ASCII Bar Chart for Memory
-  const chartTitle = '{bold}Memory Usage Chart (KB){/bold}';
-  const maxVal = Math.max(...metrics.map(m => m.memory_usage));
-  const minVal = Math.min(...metrics.map(m => m.memory_usage));
-  const range = maxVal - minVal || 1;
-  const barWidth = 40;
-
-  const bars = metrics.slice(0, 10).map((m, i) => {
-    const normalized = ((m.memory_usage - minVal) / range) * barWidth;
-    const bar = '█'.repeat(Math.max(1, Math.floor(normalized)));
-    return ` ${String(i + 1).padEnd(2)} │${bar} ${m.memory_usage}`;
-  }).join('\n');
-
-  const chartBox = blessed.box({
-    top: metrics.length + 16,
-    left: '5%',
-    width: '90%',
-    height: Math.min(metrics.length, 10) + 2,
-    content: `${chartTitle}\n\n${bars}`,
-    tags: true,
-  });
-
   // Footer
   const footer = blessed.box({
     bottom: 0,
@@ -136,7 +119,6 @@ export async function showLatestResults(csvDir: string): Promise<void> {
   screen.append(tableHeader);
   screen.append(metricsBox);
   screen.append(summary);
-  screen.append(chartBox);
   screen.append(footer);
 
   screen.render();

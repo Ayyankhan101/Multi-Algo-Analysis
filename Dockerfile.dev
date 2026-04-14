@@ -1,0 +1,23 @@
+# Development Dockerfile
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    g++ \
+    make \
+    cmake \
+    libsqlite3-dev \
+    gnuplot-nox \
+    nodejs \
+    npm \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Node.js dependencies will be done by the user
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p database csv png exports build
+
+CMD ["bash"]

@@ -44,21 +44,24 @@ export async function showHistoricalRuns(db: DatabaseService): Promise<void> {
   });
 
   // Table header
+  const tableHeaderY = 2;
   const tableHeader = blessed.box({
-    top: 2,
+    top: tableHeaderY,
     left: '5%',
     width: '90%',
     height: 1,
-    content: '{bold}{cyan-fg}#   Algorithm           Timestamp             Metrics{/cyan-fg}{/bold}',
+    content: '{bold}{cyan-fg}#   | Algorithm            | Timestamp            | Metrics{/cyan-fg}{/bold}',
     tags: true,
   });
 
   // Runs list
+  const runsY = tableHeaderY + 2;
+  const runsHeight = Math.min(runs.length + 2, 15);
   const runsBox = blessed.list({
-    top: 4,
+    top: runsY,
     left: '5%',
     width: '90%',
-    height: Math.min(runs.length + 2, 20),
+    height: runsHeight,
     keys: true,
     vi: true,
     mouse: true,
@@ -74,13 +77,14 @@ export async function showHistoricalRuns(db: DatabaseService): Promise<void> {
       },
     },
     items: runs.map((run, i) =>
-      ` ${String(i + 1).padEnd(3)} ${run.algorithmName.padEnd(20)} ${run.timestamp.padEnd(22)} ${run.metricCount} metrics`
+      ` ${String(i + 1).padStart(3)} | ${run.algorithmName.padEnd(20)} | ${run.timestamp} | ${run.metricCount} metrics`
     ),
   });
 
   // Detail box
+  const detailY = runsY + runsHeight + 1;
   const detailBox = blessed.box({
-    top: runs.length + 7,
+    top: detailY,
     left: '5%',
     width: '90%',
     height: 8,

@@ -32,38 +32,43 @@ export function showExecutionScreen(results: RunResult[], rawOutput: string, alg
       top: 0,
       left: 0,
       width: '100%',
-      height: 1,
+      height: 2,
       align: 'center',
       content: `{bold}${displayName} Execution Results{/bold}\n{gray-fg}${description}{/gray-fg}`,
       tags: true,
     });
 
     // Results table
+    const tableHeaderY = 3;
     const tableHeader = blessed.box({
-      top: 2,
+      top: tableHeaderY,
       left: '5%',
       width: '90%',
-      height: isSearch ? 2 : 1,
+      height: 1,
       content: isSearch
-        ? '{bold}{cyan-fg}Target     | Status  | Index    | CPU Time(s)    | Memory(KB) | Exec Time(s){/cyan-fg}{/bold}'
-        : '{bold}{cyan-fg}Run #      | CPU Time(s)    | Memory(KB) | Exec Time(s){/cyan-fg}{/bold}',
+        ? '{bold}{cyan-fg}Run | Target     | Status    | Index    | CPU Time(s)    | Memory(KB) | Exec Time(s){/cyan-fg}{/bold}'
+        : '{bold}{cyan-fg}Run | CPU Time(s)    | Memory(KB) | Exec Time(s){/cyan-fg}{/bold}',
       tags: true,
     });
 
+    const resultsY = tableHeaderY + 2;
+    const resultsHeight = Math.min(results.length + 1, 12);
     const resultsBox = blessed.box({
-      top: isSearch ? 4 : 3,
+      top: resultsY,
       left: '5%',
       width: '90%',
-      height: Math.min(results.length + 2, 15),
+      height: resultsHeight,
       tags: true,
       content: isSearch
         ? results.map((r, i) => {
-            const status = r.found ? '{green-fg}Found{/green-fg}' : '{red-fg}Not Found{/red-fg}';
-            const index = r.found ? String(r.index) : 'N/A';
-            return `  ${(i+1).toString().padStart(3)}      ${String(r.target).padEnd(10)} | ${status.padEnd(7)} | ${index.padEnd(8)} | ${r.cpuTime.toExponential(2).padEnd(14)} | ${String(r.memoryUsage).padEnd(10)} | ${r.execTime.toExponential(2)}`;
+            const status = r.found ? '{green-fg}✓ Found{/green-fg}' : '{red-fg}✗ Not Found{/red-fg}';
+            const index = r.found && r.index !== undefined ? String(r.index) : 'N/A';
+            const runNum = String(i + 1).padStart(3);
+            return `  ${runNum} | ${String(r.target).padEnd(10)} | ${status.padEnd(9)} | ${index.padEnd(8)} | ${r.cpuTime.toExponential(2).padEnd(14)} | ${String(r.memoryUsage).padEnd(10)} | ${r.execTime.toExponential(2)}`;
           }).join('\n')
         : results.map((r, i) => {
-            return `  ${(i+1).toString().padStart(3)}      ${r.cpuTime.toExponential(2).padEnd(14)} | ${String(r.memoryUsage).padEnd(10)} | ${r.execTime.toExponential(2)}`;
+            const runNum = String(i + 1).padStart(3);
+            return `  ${runNum} | ${r.cpuTime.toExponential(2).padEnd(14)} | ${String(r.memoryUsage).padEnd(10)} | ${r.execTime.toExponential(2)}`;
           }).join('\n'),
     });
 
@@ -73,11 +78,12 @@ export function showExecutionScreen(results: RunResult[], rawOutput: string, alg
     const avgMem = results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length;
     const avgExec = results.reduce((sum, r) => sum + r.execTime, 0) / results.length;
 
+    const summaryY = resultsY + resultsHeight + 1;
     const summary = blessed.box({
-      top: results.length + 7,
+      top: summaryY,
       left: '5%',
       width: '90%',
-      height: 6,
+      height: 7,
       tags: true,
       content: `{bold}Summary:{/bold}
   ${isSearch ? `Total Searches: {yellow-fg}${results.length}{/yellow-fg}
@@ -86,16 +92,6 @@ export function showExecutionScreen(results: RunResult[], rawOutput: string, alg
   Avg Memory: {blue-fg}${avgMem.toFixed(0)}KB{/blue-fg}
   Avg Exec Time: {blue-fg}${avgExec.toExponential(2)}s{/blue-fg}
   Complexity: {magenta-fg}${description}{/magenta-fg}`,
-    });
-
-    // Raw output (collapsed)
-    const rawBox = blessed.box({
-      top: results.length + 13,
-      left: '5%',
-      width: '90%',
-      height: 5,
-      tags: true,
-      content: `{gray-fg}Raw output available (${rawOutput.length} chars){/gray-fg}`,
     });
 
     // Footer
@@ -113,7 +109,6 @@ export function showExecutionScreen(results: RunResult[], rawOutput: string, alg
     screen.append(tableHeader);
     screen.append(resultsBox);
     screen.append(summary);
-    screen.append(rawBox);
     screen.append(footer);
 
     screen.key(['escape', 'q', 'enter', 'C-c', 'space'], () => {

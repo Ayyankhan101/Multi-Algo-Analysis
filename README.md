@@ -4,7 +4,24 @@ A comprehensive C++ system for monitoring, storing, and visualizing resource usa
 
 ## Quick Start
 
-### 1. Install Dependencies & Build
+### Option 1: Docker (Easiest - Recommended for new users)
+
+```bash
+# Run TUI Dashboard
+docker compose --profile tui up
+
+# Run algorithm via CLI
+docker compose --profile cli run multi-algo-binary
+
+# Development mode
+docker compose --profile dev up
+```
+
+See [docs/DOCKER.md](docs/DOCKER.md) for complete Docker deployment guide.
+
+### Option 2: Native Installation
+
+#### 1. Install Dependencies & Build
 
 Run the automated setup script:
 
@@ -15,7 +32,7 @@ sudo ./scripts/setup.sh
 
 **Or** install dependencies manually (see [docs/README.md](docs/README.md) for your distribution).
 
-### 2. Run the Application
+#### 2. Run the Application
 
 **Option A: Terminal UI (Recommended)**
 ```bash

@@ -16,7 +16,17 @@ interface JsonLine {
   [key: string]: any;
 }
 
-export function runAlgorithm(binaryPath: string, algorithmName: string = 'binary_search'): Promise<RunOutput> {
+export function runAlgorithm(
+  binaryPath: string,
+  algorithmName: string = 'binary_search',
+  params?: {
+    dataSize?: number;
+    dataStep?: number;
+    cpuCore?: number;
+    totalRuns?: number;
+    customTargets?: number[];
+  }
+): Promise<RunOutput> {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(binaryPath)) {
       reject(new Error(`Binary not found: ${binaryPath}`));
@@ -28,8 +38,18 @@ export function runAlgorithm(binaryPath: string, algorithmName: string = 'binary
     let csvFile = '';
     let pngFile: string | undefined;
 
-    // Use --json flag for structured output
-    const proc = spawn(binaryPath, ['--algorithm', algorithmName, '--json'], {
+    // Build command arguments
+    const args: string[] = ['--algorithm', algorithmName, '--json'];
+    
+    if (params?.dataSize) args.push('--data-size', String(params.dataSize));
+    if (params?.dataStep) args.push('--data-step', String(params.dataStep));
+    if (params?.cpuCore !== undefined) args.push('--core', String(params.cpuCore));
+    if (params?.totalRuns) args.push('--runs', String(params.totalRuns));
+    if (params?.customTargets && params.customTargets.length > 0) {
+      args.push('--targets', params.customTargets.join(','));
+    }
+
+    const proc = spawn(binaryPath, args, {
       cwd: path.dirname(binaryPath),
     });
 

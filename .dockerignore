@@ -1,0 +1,8 @@
+# Docker ignore file
+.git
+.gitignore
+.qwen
+build/
+Testing/
+exports/
+node_modules/

@@ -86,10 +86,18 @@ int main(int argc, char* argv[])
 {
     try
     {
-        // Parse command line arguments for algorithm selection
+        // Parse command line arguments for algorithm selection and configuration
         AlgorithmType selected_algo = AlgorithmType::BINARY_SEARCH;
         bool list_algorithms = false;
         bool use_json_output = false;
+        bool use_stream_output = false;
+        
+        // Configurable parameters with defaults
+        int data_size = 1000000;
+        int data_step = 3;
+        int cpu_core = 0;
+        int total_runs = 5;
+        std::string custom_targets_str = "";
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -97,6 +105,8 @@ int main(int argc, char* argv[])
                 list_algorithms = true;
             } else if (arg == "--json" || arg == "-j") {
                 use_json_output = true;
+            } else if (arg == "--stream" || arg == "-s") {
+                use_stream_output = true;
             } else if (arg == "--algorithm" || arg == "-a") {
                 if (i + 1 < argc) {
                     std::string algo_name = argv[++i];
@@ -111,7 +121,32 @@ int main(int argc, char* argv[])
                         return 1;
                     }
                 }
+            } else if (arg == "--data-size" || arg == "-d") {
+                if (i + 1 < argc) {
+                    data_size = std::stoi(argv[++i]);
+                }
+            } else if (arg == "--data-step" || arg == "-t") {
+                if (i + 1 < argc) {
+                    data_step = std::stoi(argv[++i]);
+                }
+            } else if (arg == "--core" || arg == "-c") {
+                if (i + 1 < argc) {
+                    cpu_core = std::stoi(argv[++i]);
+                }
+            } else if (arg == "--runs" || arg == "-r") {
+                if (i + 1 < argc) {
+                    total_runs = std::stoi(argv[++i]);
+                }
+            } else if (arg == "--targets" || arg == "-T") {
+                if (i + 1 < argc) {
+                    custom_targets_str = argv[++i];
+                }
             }
+        }
+
+        // --stream implies --json, so we can use JSON output
+        if (use_stream_output) {
+            use_json_output = true;
         }
         
         if (list_algorithms) {
@@ -119,23 +154,28 @@ int main(int argc, char* argv[])
             for (const auto& algo : get_available_algorithms()) {
                 std::cout << "  " << algo.name << " - " << algo.description << std::endl;
             }
-            std::cout << "\nUsage: ./resource_monitor_app [--algorithm <name>] [--list] [--json]" << std::endl;
+            std::cout << "\nUsage: ./resource_monitor_app [--algorithm <name>] [--list] [--json] [--stream]" << std::endl;
             std::cout << "  --algorithm, -a  Select algorithm to run (binary, linear, merge)" << std::endl;
             std::cout << "  --list, -l       List available algorithms" << std::endl;
             std::cout << "  --json, -j       Output results as JSON lines (for TUI integration)" << std::endl;
+            std::cout << "  --stream, -s     Stream real-time metrics during execution (implies --json)" << std::endl;
+            std::cout << "  --data-size, -d  Number of elements to generate (default: 1000000)" << std::endl;
+            std::cout << "  --data-step, -t  Step between values (default: 3)" << std::endl;
+            std::cout << "  --core, -c       CPU core ID to bind (default: 0)" << std::endl;
+            std::cout << "  --runs, -r       Number of iterations (default: 5)" << std::endl;
+            std::cout << "  --targets, -T    Comma-separated targets (default: 1000,50000,100000,500000,999999)" << std::endl;
             return 0;
         }
         
-        // Set CPU affinity to core 0 (static assignment)
-        const int core_id = 0;
-        set_cpu_affinity(core_id);
+        // Set CPU affinity to configured core
+        set_cpu_affinity(cpu_core);
         
         std::string algo_name = algorithm_to_string(selected_algo);
 
         if (use_json_output) {
-            emit_json_line("\"type\":\"config\",\"algorithm\":\"" + json_escape(algo_name) + "\",\"cpu_core\":" + std::to_string(core_id) + ",\"total_runs\":" + std::to_string(5));
+            emit_json_line("\"type\":\"config\",\"algorithm\":\"" + json_escape(algo_name) + "\",\"cpu_core\":" + std::to_string(cpu_core) + ",\"total_runs\":" + std::to_string(total_runs) + ",\"data_size\":" + std::to_string(data_size));
         } else {
-            std::cout << "Running on CPU core: " << core_id << std::endl;
+            std::cout << "Running on CPU core: " << cpu_core << std::endl;
             std::cout << "Selected algorithm: " << algo_name << std::endl;
         }
 
@@ -164,24 +204,43 @@ int main(int argc, char* argv[])
             }
         #endif
 
-        // Create test data
+        // Create test data with configurable size and step
         std::vector<int> data;
-        for (int i = 0; i < 1000000; i += 3)
+        for (int i = 0; i < data_size; i += data_step)
         {
             data.push_back(i);
         }
 
+        // Parse targets from custom string or use defaults
+        std::vector<int> targets;
+        if (!custom_targets_str.empty()) {
+            std::stringstream ss(custom_targets_str);
+            std::string target_str;
+            while (std::getline(ss, target_str, ',')) {
+                targets.push_back(std::stoi(target_str));
+            }
+        } else {
+            targets = {1000, 50000, 100000, 500000, 999999};
+        }
+        
+        // Adjust targets count to match total_runs
+        while (targets.size() < static_cast<size_t>(total_runs)) {
+            targets.push_back(targets.back() * 2);
+        }
+        if (targets.size() > static_cast<size_t>(total_runs)) {
+            targets.resize(total_runs);
+        }
+
         // Run algorithm multiple times and monitor resources
-        std::vector<int> targets = {1000, 50000, 100000, 500000, 999999};
         std::vector<int> results;
 
         for (size_t i = 0; i < targets.size(); ++i)
         {
             int target = targets[i];
             
-            if (use_json_output) {
+            if (use_json_output && !use_stream_output) {
                 emit_json_line("\"type\":\"run_start\",\"run\":" + std::to_string(i + 1) + ",\"total_runs\":" + std::to_string(targets.size()) + ",\"target\":" + std::to_string(target));
-            } else {
+            } else if (!use_json_output) {
                 std::cout << "Run " << (i + 1) << "/" << targets.size()
                           << " - Target: " << target << std::endl;
             }
@@ -189,34 +248,70 @@ int main(int argc, char* argv[])
             // Start monitoring
             monitor.start_monitoring();
 
-            // Run selected algorithm
-            switch (selected_algo) {
-                case AlgorithmType::BINARY_SEARCH:
-                    run_binary_search(monitor, data, target);
-                    break;
-                case AlgorithmType::LINEAR_SEARCH:
-                    run_linear_search(monitor, data, target);
-                    break;
-                case AlgorithmType::MERGE_SORT:
-                    run_merge_sort(monitor, data, 0); // target not used
-                    break;
-            }
+            // For streaming, sample metrics during execution
+            if (use_stream_output && use_json_output) {
+                // Emit start of run
+                emit_json_line("\"type\":\"run_start\",\"run\":" + std::to_string(i + 1) + ",\"total_runs\":" + std::to_string(targets.size()) + ",\"target\":" + std::to_string(target));
+                
+                auto stream_start = std::chrono::high_resolution_clock::now();
+                int result = -1;
+                
+                // Sample metrics at multiple points during execution
+                for (int sample = 0; sample < 3; ++sample) {
+                    // Run algorithm iteration
+                    switch (selected_algo) {
+                        case AlgorithmType::BINARY_SEARCH:
+                            run_binary_search(monitor, data, target);
+                            break;
+                        case AlgorithmType::LINEAR_SEARCH:
+                            run_linear_search(monitor, data, target);
+                            break;
+                        case AlgorithmType::MERGE_SORT:
+                            run_merge_sort(monitor, data, 0);
+                            break;
+                    }
+                    
+                    // Sample current metrics
+                    {
+                        struct rusage current_usage;
+                        getrusage(RUSAGE_SELF, &current_usage);
+                        auto now = std::chrono::high_resolution_clock::now();
+                        double elapsed = std::chrono::duration<double>(now - stream_start).count();
+                        emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) + 
+                                     ",\"sample\":" + std::to_string(sample + 1) +
+                                     ",\"cpu_time\":" + std::to_string(current_usage.ru_utime.tv_sec + current_usage.ru_utime.tv_usec / 1000000.0) +
+                                     ",\"memory_usage\":" + std::to_string(current_usage.ru_maxrss) +
+                                     ",\"elapsed\":" + std::to_string(elapsed));
+                    }
+                    
+                    // Small delay to spread out samples
+                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+                }
+                
+                // Get final result
+                switch (selected_algo) {
+                    case AlgorithmType::BINARY_SEARCH:
+                        result = binary_search(data, target);
+                        break;
+                    case AlgorithmType::LINEAR_SEARCH:
+                        result = linear_search(data, target);
+                        break;
+                    case AlgorithmType::MERGE_SORT:
+                        // Merge sort doesn't have a result index
+                        result = -1;
+                        break;
+                }
 
-            // End monitoring and get data
-            auto run_data = monitor.end_monitoring();
-            monitor.add_data_point(run_data);
+                // End monitoring and get final data
+                auto run_data = monitor.end_monitoring();
+                monitor.add_data_point(run_data);
 
-            // Store data in database if SQLite is available
-            #ifdef HAS_SQLITE
-                db_manager.insert_resource_data(table_name, run_data.timestamp, run_data.cpu_time, run_data.memory_usage, run_data.execution_time);
-            #endif
+                // Store data in database if SQLite is available
+                #ifdef HAS_SQLITE
+                    db_manager.insert_resource_data(table_name, run_data.timestamp, run_data.cpu_time, run_data.memory_usage, run_data.execution_time);
+                #endif
 
-            // Print result info
-            if (selected_algo != AlgorithmType::MERGE_SORT) {
-                int result = (selected_algo == AlgorithmType::BINARY_SEARCH)
-                    ? binary_search(data, target)
-                    : linear_search(data, target);
-
+                // Emit final result
                 if (use_json_output) {
                     std::string found_status = (result != -1) ? "true" : "false";
                     std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
@@ -229,33 +324,76 @@ int main(int argc, char* argv[])
                                  ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
                                  ",\"exec_time\":" + std::to_string(run_data.execution_time);
                     emit_json_line(json_result);
-                } else {
-                    if (result != -1)
-                    {
-                        std::cout << "  Found at index: " << result
-                                  << " (value: " << data[result] << ")" << std::endl;
-                    }
-                    else
-                    {
-                        std::cout << "  Not found" << std::endl;
-                    }
-
-                    std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
-                              << "Memory: " << run_data.memory_usage << "KB, "
-                              << "Exec Time: " << run_data.execution_time << "s" << std::endl;
                 }
             } else {
-                if (use_json_output) {
-                    emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
-                                 ",\"sorted_elements\":" + std::to_string(data.size()) +
-                                 ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
-                                 ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
-                                 ",\"exec_time\":" + std::to_string(run_data.execution_time));
+                // Original non-streaming path
+                switch (selected_algo) {
+                    case AlgorithmType::BINARY_SEARCH:
+                        run_binary_search(monitor, data, target);
+                        break;
+                    case AlgorithmType::LINEAR_SEARCH:
+                        run_linear_search(monitor, data, target);
+                        break;
+                    case AlgorithmType::MERGE_SORT:
+                        run_merge_sort(monitor, data, 0);
+                        break;
+                }
+
+                // End monitoring and get data
+                auto run_data = monitor.end_monitoring();
+                monitor.add_data_point(run_data);
+
+                // Store data in database if SQLite is available
+                #ifdef HAS_SQLITE
+                    db_manager.insert_resource_data(table_name, run_data.timestamp, run_data.cpu_time, run_data.memory_usage, run_data.execution_time);
+                #endif
+
+                // Print result info
+                if (selected_algo != AlgorithmType::MERGE_SORT) {
+                    int result = (selected_algo == AlgorithmType::BINARY_SEARCH)
+                        ? binary_search(data, target)
+                        : linear_search(data, target);
+
+                    if (use_json_output) {
+                        std::string found_status = (result != -1) ? "true" : "false";
+                        std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
+                                                ",\"target\":" + std::to_string(target) +
+                                                ",\"found\":" + found_status;
+                        if (result != -1) {
+                            json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
+                        }
+                        json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
+                                     ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                     ",\"exec_time\":" + std::to_string(run_data.execution_time);
+                        emit_json_line(json_result);
+                    } else {
+                        if (result != -1)
+                        {
+                            std::cout << "  Found at index: " << result
+                                      << " (value: " << data[result] << ")" << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "  Not found" << std::endl;
+                        }
+
+                        std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
+                                  << "Memory: " << run_data.memory_usage << "KB, "
+                                  << "Exec Time: " << run_data.execution_time << "s" << std::endl;
+                    }
                 } else {
-                    std::cout << "  Sorted " << data.size() << " elements" << std::endl;
-                    std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
-                              << "Memory: " << run_data.memory_usage << "KB, "
-                              << "Exec Time: " << run_data.execution_time << "s" << std::endl;
+                    if (use_json_output) {
+                        emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
+                                     ",\"sorted_elements\":" + std::to_string(data.size()) +
+                                     ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
+                                     ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                     ",\"exec_time\":" + std::to_string(run_data.execution_time));
+                    } else {
+                        std::cout << "  Sorted " << data.size() << " elements" << std::endl;
+                        std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
+                                  << "Memory: " << run_data.memory_usage << "KB, "
+                                  << "Exec Time: " << run_data.execution_time << "s" << std::endl;
+                    }
                 }
             }
         }
@@ -298,7 +436,8 @@ int main(int argc, char* argv[])
 
             std::cout << "\nAll operations completed successfully!" << std::endl;
             std::cout << "- Algorithm: " << algo_name << std::endl;
-            std::cout << "- Core used: " << core_id << std::endl;
+            std::cout << "- Core used: " << cpu_core << std::endl;
+            std::cout << "- Data size: " << data_size << " elements" << std::endl;
             std::cout << "- CSV export: " << csv_filename << std::endl;
             std::cout << "- Visualization: " << png_filename << std::endl;
         }
