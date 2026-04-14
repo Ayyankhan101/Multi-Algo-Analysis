@@ -49,7 +49,7 @@ export async function showHistoricalRuns(db: DatabaseService): Promise<void> {
     left: '5%',
     width: '90%',
     height: 1,
-    content: '{bold}{cyan-fg}#   Timestamp            Table Name                          Metrics{/cyan-fg}{/bold}',
+    content: '{bold}{cyan-fg}#   Algorithm           Timestamp             Metrics{/cyan-fg}{/bold}',
     tags: true,
   });
 
@@ -73,8 +73,8 @@ export async function showHistoricalRuns(db: DatabaseService): Promise<void> {
         fg: 'white',
       },
     },
-    items: runs.map((run, i) => 
-      ` ${String(i + 1).padEnd(3)} ${run.timestamp.padEnd(20)} ${run.tableName.padEnd(35)} ${run.metricCount} metrics`
+    items: runs.map((run, i) =>
+      ` ${String(i + 1).padEnd(3)} ${run.algorithmName.padEnd(20)} ${run.timestamp.padEnd(22)} ${run.metricCount} metrics`
     ),
   });
 
@@ -99,30 +99,32 @@ export async function showHistoricalRuns(db: DatabaseService): Promise<void> {
   runsBox.on('select', (item, index) => {
     const run = runs[index];
     const summary = db.getRunSummary(run.tableName);
-    
-    detailBox.setContent(`{bold}Run Details: {blue-fg}${run.tableName}{/blue-fg}{/bold}
+
+    detailBox.setContent(`{bold}Run Details: {blue-fg}${run.algorithmName}{/blue-fg}{/bold}
 
   Timestamp:   {yellow-fg}${run.timestamp}{/yellow-fg}
+  Table:       {yellow-fg}${run.tableName}{/yellow-fg}
   Metrics:     {yellow-fg}${run.metricCount}{/yellow-fg}
   Avg CPU Time:  {cyan-fg}${summary.avgCpuTime.toExponential(2)}s{/cyan-fg}
   Avg Memory:    {cyan-fg}${summary.avgMemory.toFixed(0)}KB{/cyan-fg}
   Avg Exec Time: {cyan-fg}${summary.avgExecTime.toExponential(2)}s{/cyan-fg}`);
-    
+
     screen.render();
   });
 
   runsBox.on('item change', (item, index) => {
     const run = runs[index];
     const summary = db.getRunSummary(run.tableName);
-    
-    detailBox.setContent(`{bold}Run Details: {blue-fg}${run.tableName}{/blue-fg}{/bold}
+
+    detailBox.setContent(`{bold}Run Details: {blue-fg}${run.algorithmName}{/blue-fg}{/bold}
 
   Timestamp:   {yellow-fg}${run.timestamp}{/yellow-fg}
+  Table:       {yellow-fg}${run.tableName}{/yellow-fg}
   Metrics:     {yellow-fg}${run.metricCount}{/yellow-fg}
   Avg CPU Time:  {cyan-fg}${summary.avgCpuTime.toExponential(2)}s{/cyan-fg}
   Avg Memory:    {cyan-fg}${summary.avgMemory.toFixed(0)}KB{/cyan-fg}
   Avg Exec Time: {cyan-fg}${summary.avgExecTime.toExponential(2)}s{/cyan-fg}`);
-    
+
     screen.render();
   });
 

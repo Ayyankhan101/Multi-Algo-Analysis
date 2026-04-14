@@ -29,6 +29,7 @@ export interface RunConfig {
 export interface HistoricalRun {
   timestamp: string;
   tableName: string;
+  algorithmName: string;
   metricCount: number;
 }
 

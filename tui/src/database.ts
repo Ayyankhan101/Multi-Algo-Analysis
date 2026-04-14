@@ -14,8 +14,8 @@ export class DatabaseService {
 
   getTableNames(): string[] {
     const stmt = this.db.prepare(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' AND name LIKE 'binary_search_%'
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND (name LIKE 'binary_search_%' OR name LIKE 'linear_search_%' OR name LIKE 'merge_sort_%')
       ORDER BY name DESC
     `);
     return (stmt.all() as Array<{ name: string }>).map(r => r.name);
@@ -25,11 +25,14 @@ export class DatabaseService {
     const tables = this.getTableNames();
     return tables.map(tableName => {
       const count = this.db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as { count: number };
-      // Extract timestamp from table name (e.g., "binary_search_20260414_060305")
-      const timestamp = tableName.replace('binary_search_', '');
+      // Extract timestamp from table name (e.g., "binary_search_20260414_060305" -> "20260414_060305")
+      const timestamp = tableName.replace(/^(binary_search|linear_search|merge_sort)_/, '');
+      // Extract algorithm name from table name
+      const algoName = tableName.match(/^(binary_search|linear_search|merge_sort)_/)?.[1] ?? 'unknown';
       return {
         timestamp: this.formatTimestamp(timestamp),
         tableName,
+        algorithmName: this.formatAlgoName(algoName),
         metricCount: count.count,
       };
     });
@@ -58,5 +61,11 @@ export class DatabaseService {
       return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)} ${raw.slice(9, 11)}:${raw.slice(11, 13)}:${raw.slice(13, 15)}`;
     }
     return raw;
+  }
+
+  private formatAlgoName(name: string): string {
+    return name
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
   }
 }
