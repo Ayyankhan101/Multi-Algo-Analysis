@@ -196,26 +196,31 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
 
     function formatSettings(p: AlgorithmParams): string {
       const lines: string[] = [];
-      const indent = '  ';
-      
+      const indent = '    ';
+
       lines.push('{bold}{cyan-fg}Data Generation{/cyan-fg}{/bold}');
+      lines.push(`${indent}{yellow-fg}Data Size:{/yellow-fg} ${highlight(p.dataSize.toString(), focusedField === 0)}`);
+      lines.push(`${indent}{gray-fg}Number of elements to generate (default: 1000000){/gray-fg}`);
       lines.push('');
-      lines.push(`${indent}{yellow-fg}▸ Data Size:{/yellow-fg} ${highlight(p.dataSize.toString(), focusedField === 0)} (number of elements to generate)`);
-      lines.push(`${indent}{yellow-fg}▸ Data Step:{/yellow-fg} ${highlight(p.dataStep.toString(), focusedField === 1)} (step between values)`);
+      lines.push(`${indent}{yellow-fg}Data Step:{/yellow-fg} ${highlight(p.dataStep.toString(), focusedField === 1)}`);
+      lines.push(`${indent}{gray-fg}Step between values (default: 3){/gray-fg}`);
       lines.push('');
       lines.push('{bold}{cyan-fg}Execution{/cyan-fg}{/bold}');
+      lines.push(`${indent}{yellow-fg}CPU Core:{/yellow-fg} ${highlight(p.cpuCore.toString(), focusedField === 2)}`);
+      lines.push(`${indent}{gray-fg}Core ID to bind (default: 0){/gray-fg}`);
       lines.push('');
-      lines.push(`${indent}{yellow-fg}▸ CPU Core:{/yellow-fg} ${highlight(p.cpuCore.toString(), focusedField === 2)} (core ID to bind)`);
-      lines.push(`${indent}{yellow-fg}▸ Total Runs:{/yellow-fg} ${highlight(p.totalRuns.toString(), focusedField === 3)} (number of iterations)`);
+      lines.push(`${indent}{yellow-fg}Total Runs:{/yellow-fg} ${highlight(p.totalRuns.toString(), focusedField === 3)}`);
+      lines.push(`${indent}{gray-fg}Number of iterations (default: 5){/gray-fg}`);
       lines.push('');
       lines.push('{bold}{cyan-fg}Search Targets{/cyan-fg}{/bold}');
+      lines.push(`${indent}{yellow-fg}Custom Targets:{/yellow-fg} ${highlight(p.useCustomTargets ? '[X] Yes' : '[ ] No', focusedField === 4)}`);
+      lines.push(`${indent}{gray-fg}Press Enter to toggle (default: No){/gray-fg}`);
       lines.push('');
-      lines.push(`${indent}{yellow-fg}▸ Use Custom Targets:{/yellow-fg} ${highlight(p.useCustomTargets ? '[X] Yes' : '[ ] No', focusedField === 4)} (press Enter to toggle)`);
-      lines.push(`${indent}{yellow-fg}▸ Custom Targets:{/yellow-fg} ${highlight(p.customTargets.join(', '), focusedField === 5)}`);
-      lines.push(`${indent}  (comma-separated values for search algorithms)`);
+      lines.push(`${indent}{yellow-fg}Target Values:{/yellow-fg} ${highlight(p.customTargets.join(', '), focusedField === 5)}`);
+      lines.push(`${indent}{gray-fg}Comma-separated values for search algorithms{/gray-fg}`);
       lines.push('');
-      lines.push('{gray-fg}Use ↑/↓ to navigate, Enter to toggle, 0-9 to edit, Backspace to delete{/gray-fg}');
-      
+      lines.push('{gray-fg}Use ↑/↓ to navigate | Enter to toggle | 0-9 to edit | Backspace to delete{/gray-fg}');
+
       return lines.join('\n');
     }
 
