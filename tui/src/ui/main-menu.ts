@@ -14,7 +14,9 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
     });
 
     const options: MenuOption[] = [
-      { label: 'Run Binary Search', description: 'Execute algorithm with resource monitoring' },
+      { label: 'Run Binary Search', description: 'Execute O(log n) search on sorted array' },
+      { label: 'Run Linear Search', description: 'Execute O(n) sequential search' },
+      { label: 'Run Merge Sort', description: 'Execute O(n log n) sorting algorithm' },
       { label: 'View Historical Runs', description: 'Browse past execution results' },
       { label: 'View Latest Results', description: 'Show most recent execution data' },
       { label: 'System Info', description: 'Display project and environment info' },
@@ -92,7 +94,7 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
       screen.destroy();
     });
 
-    screen.key(['1', '2', '3', '4', '5'], (ch) => {
+    screen.key(['1', '2', '3', '4', '5', '6', '7'], (ch) => {
       const idx = parseInt(ch) - 1;
       if (idx >= 0 && idx < options.length) {
         resolve(idx);

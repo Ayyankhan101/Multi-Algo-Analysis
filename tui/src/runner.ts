@@ -11,7 +11,7 @@ export interface RunOutput {
   rawOutput: string;
 }
 
-export function runAlgorithm(binaryPath: string): Promise<RunOutput> {
+export function runAlgorithm(binaryPath: string, algorithmName: string = 'binary_search'): Promise<RunOutput> {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(binaryPath)) {
       reject(new Error(`Binary not found: ${binaryPath}`));
@@ -23,7 +23,7 @@ export function runAlgorithm(binaryPath: string): Promise<RunOutput> {
     let csvFile = '';
     let pngFile: string | undefined;
 
-    const proc = spawn(binaryPath, [], {
+    const proc = spawn(binaryPath, ['--algorithm', algorithmName], {
       cwd: path.dirname(binaryPath),
     });
 

@@ -12,6 +12,28 @@ import { DatabaseService } from './database';
 import chalk from 'chalk';
 import figlet from 'figlet';
 
+async function waitForKeypress(): Promise<void> {
+  return new Promise<void>(resolve => {
+    const blessed = require('blessed');
+    const screen = blessed.screen({ smartCSR: true });
+    const box = blessed.box({
+      top: 'center',
+      left: 'center',
+      width: 60,
+      height: 5,
+      align: 'center',
+      content: `{red-fg}Error occurred{/red-fg}\n\n{gray-fg}Press any key to continue{/gray-fg}`,
+      tags: true,
+    });
+    screen.append(box);
+    screen.render();
+    screen.key(['escape', 'q', 'enter', 'C-c'], () => {
+      screen.destroy();
+      resolve();
+    });
+  });
+}
+
 async function main() {
   // Display banner
   console.clear();
@@ -55,11 +77,11 @@ async function main() {
       case 0: // Run Binary Search
         try {
           const loading = showLoadingIndeterminate('Executing Binary Search...');
-          
-          const output = await runAlgorithm(settings.binaryPath);
-          
+
+          const output = await runAlgorithm(settings.binaryPath, 'binary_search');
+
           loading.close();
-          
+
           if (output.results.length > 0) {
             await showExecutionScreen(output.results, output.rawOutput);
           } else {
@@ -79,29 +101,73 @@ async function main() {
           }
         } catch (err) {
           console.error(chalk.red(`\n❌ Error running algorithm: ${err}`));
-          await new Promise<void>(resolve => {
-            const blessed = require('blessed');
-            const screen = blessed.screen({ smartCSR: true });
-            const box = blessed.box({
-              top: 'center',
-              left: 'center',
-              width: 60,
-              height: 5,
-              align: 'center',
-              content: `{red-fg}Error: ${err}{/red-fg}\n\n{gray-fg}Press any key to continue{/gray-fg}`,
-              tags: true,
-            });
-            screen.append(box);
-            screen.render();
-            screen.key(['escape', 'q', 'enter', 'C-c'], () => {
-              screen.destroy();
-              resolve();
-            });
-          });
+          await waitForKeypress();
         }
         break;
 
-      case 1: // View Historical Runs
+      case 1: // Run Linear Search
+        try {
+          const loading = showLoadingIndeterminate('Executing Linear Search...');
+
+          const output = await runAlgorithm(settings.binaryPath, 'linear_search');
+
+          loading.close();
+
+          if (output.results.length > 0) {
+            await showExecutionScreen(output.results, output.rawOutput);
+          } else {
+            console.log(chalk.yellow('No results captured. Check the binary output.'));
+          }
+
+          // Refresh database connection if it was just created
+          if (!db) {
+            try {
+              const fs = require('fs');
+              if (fs.existsSync(settings.databasePath)) {
+                db = new DatabaseService(settings.databasePath);
+              }
+            } catch (err) {
+              // Ignore
+            }
+          }
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Error running algorithm: ${err}`));
+          await waitForKeypress();
+        }
+        break;
+
+      case 2: // Run Merge Sort
+        try {
+          const loading = showLoadingIndeterminate('Executing Merge Sort...');
+
+          const output = await runAlgorithm(settings.binaryPath, 'merge_sort');
+
+          loading.close();
+
+          if (output.results.length > 0) {
+            await showExecutionScreen(output.results, output.rawOutput);
+          } else {
+            console.log(chalk.yellow('No results captured. Check the binary output.'));
+          }
+
+          // Refresh database connection if it was just created
+          if (!db) {
+            try {
+              const fs = require('fs');
+              if (fs.existsSync(settings.databasePath)) {
+                db = new DatabaseService(settings.databasePath);
+              }
+            } catch (err) {
+              // Ignore
+            }
+          }
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Error running algorithm: ${err}`));
+          await waitForKeypress();
+        }
+        break;
+
+      case 3: // View Historical Runs
         if (!db) {
           console.log(chalk.yellow('\n⚠ No database available. Run the algorithm first.'));
           await new Promise<void>(resolve => setTimeout(resolve, 2000));
@@ -110,15 +176,15 @@ async function main() {
         }
         break;
 
-      case 2: // View Latest Results
+      case 4: // View Latest Results
         await showLatestResults(settings.csvPath);
         break;
 
-      case 3: // System Info
+      case 5: // System Info
         await showSystemInfo(settings);
         break;
 
-      case 4: // Exit
+      case 6: // Exit
         running = false;
         console.log(chalk.green('\n👋 Goodbye!\n'));
         break;
