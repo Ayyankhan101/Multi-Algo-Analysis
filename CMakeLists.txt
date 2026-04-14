@@ -148,6 +148,21 @@ target_link_libraries(binary_search_tests
 )
 add_test(NAME binary_search_tests COMMAND binary_search_tests)
 
+# Sorting Algorithms Tests
+add_executable(sorting_algorithms_tests
+    tests/test_sorting_algorithms.cpp
+)
+target_include_directories(sorting_algorithms_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+target_link_libraries(sorting_algorithms_tests
+    PRIVATE
+    insertion_sort
+    selection_sort
+    bubble_sort
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME sorting_algorithms_tests COMMAND sorting_algorithms_tests)
+
 # Integration Tests
 add_executable(integration_tests
     tests/test_integration.cpp
