@@ -99,7 +99,14 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
     });
 
     screen.key(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'], (ch) => {
-      const idx = parseInt(ch) - 1;
+      let idx: number;
+      if (ch === '0') {
+        // Key 0 maps to last option (Exit)
+        idx = options.length - 1;
+      } else {
+        // Keys 1-9 map to options 0-8
+        idx = parseInt(ch) - 1;
+      }
       if (idx >= 0 && idx < options.length) {
         resolve(idx);
         screen.destroy();

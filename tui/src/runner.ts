@@ -1,8 +1,10 @@
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
 import { RunResult, ResourceMetric } from './types';
+
+const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
 
 export interface RunOutput {
   results: RunResult[];
@@ -52,6 +54,12 @@ export function runAlgorithm(
     const proc = spawn(binaryPath, args, {
       cwd: path.dirname(binaryPath),
     });
+
+    // Set timeout
+    const timeout = setTimeout(() => {
+      proc.kill('SIGTERM');
+      reject(new Error(`Process timed out after ${PROCESS_TIMEOUT_MS / 1000}s`));
+    }, PROCESS_TIMEOUT_MS);
 
     proc.stdout.on('data', (data: Buffer) => {
       const text = data.toString();
@@ -106,6 +114,7 @@ export function runAlgorithm(
     });
 
     proc.on('close', (code) => {
+      clearTimeout(timeout);
       if (code !== 0) {
         reject(new Error(`Process exited with code ${code}`));
       } else {
@@ -119,6 +128,7 @@ export function runAlgorithm(
     });
 
     proc.on('error', (err) => {
+      clearTimeout(timeout);
       reject(err);
     });
   });
@@ -149,8 +159,12 @@ export function findLatestCSV(csvDir: string): string | null {
 
   const files = fs.readdirSync(csvDir)
     .filter(f => f.endsWith('.csv'))
-    .sort()
-    .reverse();
+    .map(f => ({
+      name: f,
+      path: path.join(csvDir, f),
+      mtime: fs.statSync(path.join(csvDir, f)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtime - a.mtime);
 
-  return files.length > 0 ? path.join(csvDir, files[0]) : null;
+  return files.length > 0 ? files[0].path : null;
 }

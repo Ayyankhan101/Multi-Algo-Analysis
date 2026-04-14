@@ -1,6 +1,16 @@
 import blessed from 'blessed';
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
+import { RunResult } from '../types';
+
+const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
+
+export interface LiveExecutionOutput {
+  results: RunResult[];
+  csvFile: string;
+  pngFile?: string;
+  rawOutput: string;
+}
 
 interface LiveMetric {
   run: number;
@@ -48,7 +58,7 @@ export function showLiveExecutionScreen(
     totalRuns?: number;
     customTargets?: number[];
   }
-): Promise<void> {
+): Promise<LiveExecutionOutput> {
   return new Promise((resolve, reject) => {
     const screen = blessed.screen({
       smartCSR: true,
@@ -144,9 +154,32 @@ export function showLiveExecutionScreen(
 
     // State
     const metrics: LiveMetric[] = [];
+    const results: RunResult[] = [];
     let currentRun = 0;
     let totalRuns = 5;
     let completedRuns = 0;
+    let settled = false;
+    let csvFile = '';
+    let pngFile: string | undefined;
+    let renderPending = false;
+
+    function safeResolve() { 
+      if (!settled) { 
+        settled = true; 
+        resolve({ results, csvFile, pngFile, rawOutput }); 
+      } 
+    }
+    function safeReject(err: Error) { if (!settled) { settled = true; reject(err); } }
+
+    function scheduleRender() {
+      if (!renderPending) {
+        renderPending = true;
+        setTimeout(() => {
+          renderPending = false;
+          screen.render();
+        }, 50); // Throttle to ~20fps max
+      }
+    }
 
     // Build command arguments
     const args: string[] = ['--algorithm', algorithmName, '--stream'];
@@ -163,6 +196,17 @@ export function showLiveExecutionScreen(
     const proc = spawn(binaryPath, args, {
       cwd: path.dirname(binaryPath),
     });
+
+    // Set timeout
+    const timeout = setTimeout(() => {
+      proc.kill('SIGTERM');
+      statusBar.setContent(`{red-fg}✗ Process timed out{/red-fg}`);
+      screen.render();
+      setTimeout(() => {
+        safeReject(new Error(`Process timed out after ${PROCESS_TIMEOUT_MS / 1000}s`));
+        screen.destroy();
+      }, 2000);
+    }, PROCESS_TIMEOUT_MS);
 
     let rawOutput = '';
 
@@ -221,6 +265,18 @@ export function showLiveExecutionScreen(
                 value: parsed.value,
                 exec_time: parsed.exec_time,
               });
+              
+              // Add to results array
+              results.push({
+                target: parsed.target || 0,
+                found: parsed.found || false,
+                index: parsed.index,
+                value: parsed.value,
+                cpuTime: parsed.cpu_time || 0,
+                memoryUsage: parsed.memory_usage || 0,
+                execTime: parsed.exec_time || 0,
+              });
+              
               updateMetricsDisplay();
               updateSummary();
               
@@ -239,16 +295,22 @@ export function showLiveExecutionScreen(
               progressBox.setContent(
                 `Run: ${totalRuns}/${totalRuns}\nProgress: ${completeProgressBar} ${completeProgressPct.toFixed(0)}%`
               );
-              
+              screen.render();
+
               // Auto-close after 2 seconds
               setTimeout(() => {
-                resolve();
+                safeResolve();
                 screen.destroy();
               }, 2000);
               break;
+              
+            case 'files':
+              if (parsed.csv) csvFile = parsed.csv;
+              if (parsed.png) pngFile = parsed.png;
+              break;
           }
-          
-          screen.render();
+
+          scheduleRender();
         } catch (e) {
           // Ignore non-JSON lines
         }
@@ -260,35 +322,39 @@ export function showLiveExecutionScreen(
     });
 
     proc.on('close', (code) => {
+      clearTimeout(timeout);
+      if (settled) return; // Already resolved by 'done' message
       if (code === 0) {
         // If not already closed by 'done' message
         setTimeout(() => {
-          resolve();
+          safeResolve();
           screen.destroy();
         }, 2000);
       } else {
         statusBar.setContent(`{red-fg}✗ Process exited with code ${code}{/red-fg}`);
-        screen.render();
+        scheduleRender();
         setTimeout(() => {
-          reject(new Error(`Process exited with code ${code}`));
+          safeReject(new Error(`Process exited with code ${code}`));
           screen.destroy();
         }, 2000);
       }
     });
 
     proc.on('error', (err) => {
+      clearTimeout(timeout);
       statusBar.setContent(`{red-fg}✗ Error: ${err.message}{/red-fg}`);
       screen.render();
       setTimeout(() => {
-        reject(err);
+        safeReject(err);
         screen.destroy();
       }, 2000);
     });
 
     // Allow user to cancel
     screen.key(['escape', 'q', 'C-c'], () => {
+      clearTimeout(timeout);
       proc.kill();
-      reject(new Error('Cancelled by user'));
+      safeReject(new Error('Cancelled by user'));
       screen.destroy();
     });
 
@@ -306,6 +372,10 @@ export function showLiveExecutionScreen(
 
     function updateSummary() {
       const finalResults = metrics.filter(m => m.sample === 999);
+      if (finalResults.length === 0) {
+        summaryBox.setContent('Waiting for results...');
+        return;
+      }
       const foundCount = finalResults.filter(r => r.found).length;
       const avgCpu = finalResults.reduce((sum, r) => sum + r.cpu_time, 0) / finalResults.length;
       const avgMem = finalResults.reduce((sum, r) => sum + r.memory_usage, 0) / finalResults.length;

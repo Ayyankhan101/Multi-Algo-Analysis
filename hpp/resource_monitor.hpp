@@ -22,25 +22,50 @@ public:
     
     ResourceMonitor() = default;
     ~ResourceMonitor() = default;
-    
+
+    // Get current RSS from /proc/self/statm (Linux-specific)
+    // Returns RSS in KB (same unit as ru_maxrss)
+    static size_t get_current_rss_kb() {
+        std::ifstream statm("/proc/self/statm");
+        if (!statm.is_open()) {
+            // Fallback to ru_maxrss if /proc/self/statm is unavailable
+            struct rusage usage;
+            getrusage(RUSAGE_SELF, &usage);
+            return usage.ru_maxrss;
+        }
+        
+        unsigned long size, resident;
+        statm >> size >> resident;
+        statm.close();
+        
+        // resident is in pages, convert to KB (page size is typically 4KB)
+        long page_size_kb = sysconf(_SC_PAGESIZE) / 1024;
+        return resident * page_size_kb;
+    }
+
     // Start monitoring a new operation
     void start_monitoring() {
         start_time = std::chrono::high_resolution_clock::now();
         getrusage(RUSAGE_SELF, &start_usage);
     }
-    
+
+    // Clear accumulated data points (call before reusing monitor for independent operations)
+    void clear_data() {
+        monitoring_data.clear();
+    }
+
     // End monitoring and record data
     ResourceData end_monitoring() {
         auto end_time = std::chrono::high_resolution_clock::now();
         struct rusage end_usage;
         getrusage(RUSAGE_SELF, &end_usage);
-        
+
         ResourceData data;
         data.timestamp = get_current_timestamp();
         data.cpu_time = calculate_cpu_time(start_usage, end_usage);
-        data.memory_usage = end_usage.ru_maxrss; // in KB
+        data.memory_usage = get_current_rss_kb(); // Current RSS in KB, not process-lifetime max
         data.execution_time = std::chrono::duration<double>(end_time - start_time).count();
-        
+
         return data;
     }
     
@@ -70,12 +95,7 @@ public:
     const std::vector<ResourceData>& get_monitoring_data() const {
         return monitoring_data;
     }
-    
-    // Clear monitoring data
-    void clear_data() {
-        monitoring_data.clear();
-    }
-    
+
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
     struct rusage start_usage;
@@ -88,9 +108,11 @@ private:
     }
     
     double calculate_cpu_time(const rusage& start, const rusage& end) {
-        double start_time = start.ru_utime.tv_sec + start.ru_utime.tv_usec / 1000000.0;
-        double end_time = end.ru_utime.tv_sec + end.ru_utime.tv_usec / 1000000.0;
-        return end_time - start_time;
+        double start_user = start.ru_utime.tv_sec + start.ru_utime.tv_usec / 1000000.0;
+        double end_user = end.ru_utime.tv_sec + end.ru_utime.tv_usec / 1000000.0;
+        double start_sys = start.ru_stime.tv_sec + start.ru_stime.tv_usec / 1000000.0;
+        double end_sys = end.ru_stime.tv_sec + end.ru_stime.tv_usec / 1000000.0;
+        return (end_user - start_user) + (end_sys - start_sys);
     }
 };
 

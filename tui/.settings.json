@@ -1,0 +1,14 @@
+{
+  "dataSize": 1000000,
+  "dataStep": 3,
+  "cpuCore": 2,
+  "totalRuns": 54,
+  "customTargets": [
+    0,
+    249998,
+    499998,
+    749997,
+    999999
+  ],
+  "useCustomTargets": false
+}

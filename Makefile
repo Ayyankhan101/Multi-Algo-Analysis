@@ -4,7 +4,7 @@ LDFLAGS = -lpthread -lsqlite3
 
 TARGET = resource_monitor_app
 SOURCES = src/main_application.cpp
-HEADERS = hpp/resource_monitor.hpp hpp/database_manager.hpp hpp/plot_generator.hpp hpp/binary_search_single_core.hpp
+HEADERS = hpp/resource_monitor.hpp hpp/database_manager.hpp hpp/plot_generator.hpp hpp/binary_search_single_core.hpp hpp/linear_search.hpp hpp/merge_sort.hpp hpp/insertion_sort.hpp hpp/selection_sort.hpp hpp/bubble_sort.hpp
 
 all: $(TARGET)
 

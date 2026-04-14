@@ -287,7 +287,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       }
 
       textBox.on('submit', (val: string) => {
-        const parts = val.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n > 0);
+        const parts = val.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n >= 0);
         if (parts.length > 0) {
           params.customTargets = parts;
           updateList();

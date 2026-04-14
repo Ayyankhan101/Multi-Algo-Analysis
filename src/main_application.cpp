@@ -23,14 +23,25 @@
 // Simple JSON helper to escape strings and build JSON manually
 std::string json_escape(const std::string& s) {
     std::string result;
-    for (char c : s) {
+    for (unsigned char c : s) {
         switch (c) {
             case '"': result += "\\\""; break;
             case '\\': result += "\\\\"; break;
             case '\n': result += "\\n"; break;
             case '\r': result += "\\r"; break;
             case '\t': result += "\\t"; break;
-            default: result += c;
+            case '\b': result += "\\b"; break;
+            case '\f': result += "\\f"; break;
+            default:
+                // Escape control characters (0x00-0x1F) as \uXXXX
+                if (c < 0x20) {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    result += buf;
+                } else {
+                    result += static_cast<char>(c);
+                }
+                break;
         }
     }
     return result;
@@ -180,6 +191,24 @@ int main(int argc, char* argv[])
             }
         }
 
+        // Validate input parameters
+        if (data_size <= 0) {
+            std::cerr << "Error: --data-size must be positive (got " << data_size << ")" << std::endl;
+            return 1;
+        }
+        if (data_step <= 0) {
+            std::cerr << "Error: --data-step must be positive (got " << data_step << ")" << std::endl;
+            return 1;
+        }
+        if (total_runs <= 0) {
+            std::cerr << "Error: --runs must be positive (got " << total_runs << ")" << std::endl;
+            return 1;
+        }
+        if (cpu_core < 0) {
+            std::cerr << "Error: --core must be non-negative (got " << cpu_core << ")" << std::endl;
+            return 1;
+        }
+
         // --stream implies --json, so we can use JSON output
         if (use_stream_output) {
             use_json_output = true;
@@ -274,8 +303,16 @@ int main(int argc, char* argv[])
         }
         
         // Adjust targets count to match total_runs
-        while (targets.size() < static_cast<size_t>(total_runs)) {
-            targets.push_back(targets.back() * 2);
+        if (static_cast<int>(targets.size()) < total_runs) {
+            // Generate additional targets evenly spaced within data bounds
+            const int num_elements = data_size / data_step;
+            const int max_value = (num_elements - 1) * data_step;
+            while (static_cast<int>(targets.size()) < total_runs) {
+                int next_target = (static_cast<int>(targets.size()) * max_value) / (total_runs - 1);
+                next_target = (next_target / data_step) * data_step; // ensure valid multiple
+                if (next_target > max_value) next_target = max_value;
+                targets.push_back(next_target);
+            }
         }
         if (targets.size() > static_cast<size_t>(total_runs)) {
             targets.resize(total_runs);
@@ -302,66 +339,70 @@ int main(int argc, char* argv[])
             if (use_stream_output && use_json_output) {
                 // Emit start of run
                 emit_json_line("\"type\":\"run_start\",\"run\":" + std::to_string(i + 1) + ",\"total_runs\":" + std::to_string(targets.size()) + ",\"target\":" + std::to_string(target));
-                
+
                 auto stream_start = std::chrono::high_resolution_clock::now();
                 int result = -1;
-                
-                // Sample metrics at multiple points during execution
-                for (int sample = 0; sample < 3; ++sample) {
-                    // Run algorithm iteration
+                int final_sample = 3; // Number of metric samples to emit
+
+                // Run algorithm once, sampling metrics at intervals during execution
+                for (int sample = 0; sample < final_sample; ++sample) {
+                    // Run algorithm (only on last iteration for sort algorithms to avoid redundant work)
+                    bool is_last_sample = (sample == final_sample - 1);
+                    
                     switch (selected_algo) {
                         case AlgorithmType::BINARY_SEARCH:
-                            run_binary_search(monitor, data, target);
+                            // Search algorithms: run once and capture result
+                            if (is_last_sample) {
+                                result = binary_search(data, target);
+                            } else {
+                                // For sampling, still run but discard result
+                                binary_search(data, target);
+                            }
                             break;
                         case AlgorithmType::LINEAR_SEARCH:
-                            run_linear_search(monitor, data, target);
+                            if (is_last_sample) {
+                                result = linear_search(data, target);
+                            } else {
+                                linear_search(data, target);
+                            }
                             break;
                         case AlgorithmType::MERGE_SORT:
-                            run_merge_sort(monitor, data, 0);
-                            break;
                         case AlgorithmType::INSERTION_SORT:
-                            run_insertion_sort(monitor, data, 0);
-                            break;
                         case AlgorithmType::SELECTION_SORT:
-                            run_selection_sort(monitor, data, 0);
-                            break;
                         case AlgorithmType::BUBBLE_SORT:
-                            run_bubble_sort(monitor, data, 0);
+                            // Sort algorithms: only run on the last sample to avoid redundant sorts
+                            if (is_last_sample) {
+                                switch (selected_algo) {
+                                    case AlgorithmType::MERGE_SORT: run_merge_sort(monitor, data, 0); break;
+                                    case AlgorithmType::INSERTION_SORT: run_insertion_sort(monitor, data, 0); break;
+                                    case AlgorithmType::SELECTION_SORT: run_selection_sort(monitor, data, 0); break;
+                                    case AlgorithmType::BUBBLE_SORT: run_bubble_sort(monitor, data, 0); break;
+                                    default: break;
+                                }
+                                result = -1; // Sort algorithms don't have a result index
+                            }
+                            break;
+                        default:
                             break;
                     }
-                    
+
                     // Sample current metrics
                     {
                         struct rusage current_usage;
                         getrusage(RUSAGE_SELF, &current_usage);
                         auto now = std::chrono::high_resolution_clock::now();
                         double elapsed = std::chrono::duration<double>(now - stream_start).count();
-                        emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) + 
+                        emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) +
                                      ",\"sample\":" + std::to_string(sample + 1) +
                                      ",\"cpu_time\":" + std::to_string(current_usage.ru_utime.tv_sec + current_usage.ru_utime.tv_usec / 1000000.0) +
                                      ",\"memory_usage\":" + std::to_string(current_usage.ru_maxrss) +
                                      ",\"elapsed\":" + std::to_string(elapsed));
                     }
-                    
-                    // Small delay to spread out samples
-                    std::this_thread::sleep_for(std::chrono::microseconds(100));
-                }
-                
-                // Get final result
-                switch (selected_algo) {
-                    case AlgorithmType::BINARY_SEARCH:
-                        result = binary_search(data, target);
-                        break;
-                    case AlgorithmType::LINEAR_SEARCH:
-                        result = linear_search(data, target);
-                        break;
-                    case AlgorithmType::MERGE_SORT:
-                    case AlgorithmType::INSERTION_SORT:
-                    case AlgorithmType::SELECTION_SORT:
-                    case AlgorithmType::BUBBLE_SORT:
-                        // Sort algorithms don't have a result index
-                        result = -1;
-                        break;
+
+                    // Small delay to spread out samples (skip on last sample)
+                    if (!is_last_sample) {
+                        std::this_thread::sleep_for(std::chrono::microseconds(100));
+                    }
                 }
 
                 // End monitoring and get final data
@@ -375,17 +416,28 @@ int main(int argc, char* argv[])
 
                 // Emit final result
                 if (use_json_output) {
-                    std::string found_status = (result != -1) ? "true" : "false";
-                    std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
-                                            ",\"target\":" + std::to_string(target) +
-                                            ",\"found\":" + found_status;
-                    if (result != -1) {
-                        json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
+                    bool is_search_algo = (selected_algo == AlgorithmType::BINARY_SEARCH ||
+                                           selected_algo == AlgorithmType::LINEAR_SEARCH);
+                    if (is_search_algo) {
+                        std::string found_status = (result != -1) ? "true" : "false";
+                        std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
+                                                ",\"target\":" + std::to_string(target) +
+                                                ",\"found\":" + found_status;
+                        if (result != -1) {
+                            json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
+                        }
+                        json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
+                                     ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                     ",\"exec_time\":" + std::to_string(run_data.execution_time);
+                        emit_json_line(json_result);
+                    } else {
+                        // Sort algorithms: emit sorted_elements format
+                        emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
+                                     ",\"sorted_elements\":" + std::to_string(data.size()) +
+                                     ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
+                                     ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                     ",\"exec_time\":" + std::to_string(run_data.execution_time));
                     }
-                    json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
-                                 ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
-                                 ",\"exec_time\":" + std::to_string(run_data.execution_time);
-                    emit_json_line(json_result);
                 }
             } else {
                 // Original non-streaming path
@@ -486,13 +538,12 @@ int main(int argc, char* argv[])
         while (std::getline(csv_file, line))
         {
             std::vector<std::string> row;
-            size_t pos = 0;
-            while ((pos = line.find(',')) != std::string::npos)
+            std::stringstream ss(line);
+            std::string cell;
+            while (std::getline(ss, cell, ','))
             {
-                row.push_back(line.substr(0, pos));
-                line.erase(0, pos + 1);
+                row.push_back(cell);
             }
-            row.push_back(line);
             csv_data.push_back(row);
         }
 

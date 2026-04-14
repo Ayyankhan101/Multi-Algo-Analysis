@@ -159,6 +159,7 @@ export function generateJSONReport(
 export function showExportScreen(
   results: RunResult[],
   algorithmName: string,
+  projectRoot: string,
   metrics?: ResourceMetric[]
 ): Promise<void> {
   return new Promise((resolve) => {
@@ -266,7 +267,7 @@ export function showExportScreen(
       }
       
       // Save to file
-      const exportDir = path.join(process.cwd(), 'exports');
+      const exportDir = path.join(projectRoot, 'exports');
       if (!fs.existsSync(exportDir)) {
         fs.mkdirSync(exportDir, { recursive: true });
       }

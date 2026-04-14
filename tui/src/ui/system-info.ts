@@ -2,6 +2,7 @@ import blessed from 'blessed';
 import { AppSettings } from '../types';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 export async function showSystemInfo(settings: AppSettings): Promise<void> {
   const screen = blessed.screen({
@@ -51,8 +52,8 @@ export async function showSystemInfo(settings: AppSettings): Promise<void> {
 {bold}Environment:{/bold}
   Node.js:         {cyan-fg}${nodeVersion}{/cyan-fg}
   Platform:        {cyan-fg}${process.platform} ${process.arch}{/cyan-fg}
-  CPU Cores:       {cyan-fg}${require('os').cpus().length}{/cyan-fg}
-  Total Memory:    {cyan-fg}${(require('os').totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB{/cyan-fg}
+  CPU Cores:       {cyan-fg}${os.cpus().length}{/cyan-fg}
+  Total Memory:    {cyan-fg}${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB{/cyan-fg}
 
 {bold}Components:{/bold}
   Resource Monitor:  {green-fg}Active{/green-fg}

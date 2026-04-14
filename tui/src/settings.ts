@@ -3,8 +3,17 @@ import fs from 'fs';
 import { AppSettings, AlgorithmParams } from './types';
 
 export function resolveProjectRoot(): string {
-  // Go up two levels from tui/dist/ directory to project root
-  // __dirname points to tui/dist/, so we need ../.. to reach project root
+  // Walk up from __dirname to find the project root (where package.json exists)
+  let current = __dirname;
+  for (let i = 0; i < 10; i++) {
+    if (fs.existsSync(path.join(current, 'package.json'))) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break; // Reached filesystem root
+    current = parent;
+  }
+  // Fallback: assume __dirname is tui/dist/ or tui/src/
   return path.resolve(__dirname, '../..');
 }
 
@@ -22,13 +31,28 @@ export function getDefaultAlgorithmParams(): AlgorithmParams {
 export function getDefaultSettings(): AppSettings {
   const root = resolveProjectRoot();
 
+  // Try to load saved settings
+  let savedParams: Partial<AlgorithmParams> | null = null;
+  const settingsPath = path.join(root, '.settings.json');
+  if (fs.existsSync(settingsPath)) {
+    try {
+      savedParams = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    } catch {
+      // Ignore corrupted settings file
+    }
+  }
+
+  const algorithmParams = savedParams
+    ? { ...getDefaultAlgorithmParams(), ...savedParams }
+    : getDefaultAlgorithmParams();
+
   return {
     projectRoot: root,
     databasePath: path.join(root, 'database', 'resource_metrics.db'),
     csvPath: path.join(root, 'csv'),
     pngPath: path.join(root, 'png'),
     binaryPath: path.join(root, 'resource_monitor_app'),
-    algorithmParams: getDefaultAlgorithmParams(),
+    algorithmParams,
   };
 }
 

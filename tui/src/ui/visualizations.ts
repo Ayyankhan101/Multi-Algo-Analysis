@@ -11,12 +11,16 @@ export function generateSparkline(values: number[], width: number = 40): string 
   if (values.length === 0) return '';
   if (values.length === 1) return SPARKLINE_CHARS[7];
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  let min = values[0];
+  let max = values[0];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] < min) min = values[i];
+    if (values[i] > max) max = values[i];
+  }
   const range = max - min || 1;
 
   const sampledValues = sampleArray(values, width);
-  
+
   return sampledValues
     .map(v => {
       const index = Math.floor(((v - min) / range) * (SPARKLINE_CHARS.length - 1));
@@ -52,9 +56,13 @@ export function generateHorizontalBarChart(
   color: string = 'cyan'
 ): string {
   if (labels.length === 0 || values.length === 0) return '';
-  
-  const maxVal = Math.max(...values);
-  const minVal = Math.min(...values);
+
+  let maxVal = values[0];
+  let minVal = values[0];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] > maxVal) maxVal = values[i];
+    if (values[i] < minVal) minVal = values[i];
+  }
   const range = maxVal - minVal || 1;
   
   const lines: string[] = [];
@@ -167,23 +175,30 @@ export function generatePerformanceTrend(metrics: ResourceMetric[]): string {
   const cpuTimes = metrics.map(m => m.cpu_time);
   const memoryValues = metrics.map(m => m.memory_usage);
   const execTimes = metrics.map(m => m.execution_time);
-  
+
+  // Helper to compute min/max safely
+  const safeMinMax = (arr: number[]) => {
+    let min = arr[0], max = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+      if (arr[i] < min) min = arr[i];
+      if (arr[i] > max) max = arr[i];
+    }
+    return { min, max };
+  };
+
   // CPU Time sparkline
-  const minCpu = Math.min(...cpuTimes);
-  const maxCpu = Math.max(...cpuTimes);
-  lines.push(`{bold}CPU Time Trend{/bold}  Min: ${minCpu.toExponential(2)}s  Max: ${maxCpu.toExponential(2)}s`);
+  const cpuMinMax = safeMinMax(cpuTimes);
+  lines.push(`{bold}CPU Time Trend{/bold}  Min: ${cpuMinMax.min.toExponential(2)}s  Max: ${cpuMinMax.max.toExponential(2)}s`);
   lines.push(`[${generateSparkline(cpuTimes, 50)}]\n`);
 
   // Memory sparkline
-  const minMem = Math.min(...memoryValues);
-  const maxMem = Math.max(...memoryValues);
-  lines.push(`{bold}Memory Usage Trend (KB){/bold}  Min: ${minMem}KB  Max: ${maxMem}KB`);
+  const memMinMax = safeMinMax(memoryValues);
+  lines.push(`{bold}Memory Usage Trend (KB){/bold}  Min: ${memMinMax.min}KB  Max: ${memMinMax.max}KB`);
   lines.push(`[${generateSparkline(memoryValues, 50)}]\n`);
 
   // Execution Time sparkline
-  const minExec = Math.min(...execTimes);
-  const maxExec = Math.max(...execTimes);
-  lines.push(`{bold}Execution Time Trend{/bold}  Min: ${minExec.toExponential(2)}s  Max: ${maxExec.toExponential(2)}s`);
+  const execMinMax = safeMinMax(execTimes);
+  lines.push(`{bold}Execution Time Trend{/bold}  Min: ${execMinMax.min.toExponential(2)}s  Max: ${execMinMax.max.toExponential(2)}s`);
   lines.push(`[${generateSparkline(execTimes, 50)}]`);
   
   return lines.join('\n');
@@ -237,9 +252,39 @@ export function showEnhancedResults(
     });
 
     // Summary statistics
-    const avgCpu = results.reduce((sum, r) => sum + r.cpuTime, 0) / results.length;
-    const avgMem = results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length;
-    const avgExec = results.reduce((sum, r) => sum + r.execTime, 0) / results.length;
+    const avgCpu = results.length > 0 ? results.reduce((sum, r) => sum + r.cpuTime, 0) / results.length : 0;
+    const avgMem = results.length > 0 ? results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length : 0;
+    const avgExec = results.length > 0 ? results.reduce((sum, r) => sum + r.execTime, 0) / results.length : 0;
+
+    if (results.length === 0) {
+      const footer = blessed.box({
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        height: 1,
+        align: 'center',
+        content: '{gray-fg}Press any key to continue{/gray-fg}',
+        tags: true,
+      });
+
+      const emptySummary = blessed.box({
+        top: trendY + 2,
+        left: '5%',
+        width: '90%',
+        height: 3,
+        tags: true,
+        content: `{bold}No results to display.{/bold}`,
+        align: 'center',
+      });
+      screen.append(header);
+      screen.append(tableBox);
+      screen.append(trendBox);
+      screen.append(emptySummary);
+      screen.append(footer);
+      screen.key(['escape', 'q', 'enter', 'C-c'], () => { resolve(); screen.destroy(); });
+      screen.render();
+      return;
+    }
 
     const summaryY = trendY + 11;
     const summaryBox = blessed.box({
@@ -256,7 +301,7 @@ export function showEnhancedResults(
   Success Rate:   {blue-fg}${((results.filter(r => r.found).length / results.length) * 100).toFixed(0)}%{/blue-fg}`,
       tags: true,
     });
-    
+
     const footer = blessed.box({
       bottom: 0,
       left: 0,

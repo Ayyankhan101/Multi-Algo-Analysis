@@ -1,8 +1,6 @@
 import blessed from 'blessed';
-import { ResourceMetric, RunResult } from '../types';
 import { readCSVFile, findLatestCSV } from '../runner';
 import path from 'path';
-import { showEnhancedResults, generatePerformanceTrend, generateSparkline } from './visualizations';
 
 export async function showLatestResults(csvDir: string): Promise<void> {
   const screen = blessed.screen({
@@ -35,6 +33,24 @@ export async function showLatestResults(csvDir: string): Promise<void> {
   }
 
   const metrics = await readCSVFile(latestCSV);
+
+  if (metrics.length === 0) {
+    const msg = blessed.box({
+      top: 'center',
+      left: 'center',
+      width: 60,
+      height: 3,
+      align: 'center',
+      content: '{yellow-fg}CSV file is empty.{/yellow-fg}',
+      tags: true,
+    });
+    screen.append(msg);
+    screen.render();
+    await new Promise<void>(resolve => {
+      screen.key(['escape', 'q', 'enter', 'C-c'], () => { screen.destroy(); resolve(); });
+    });
+    return;
+  }
 
   // Header
   const header = blessed.box({
@@ -78,8 +94,8 @@ export async function showLatestResults(csvDir: string): Promise<void> {
   const avgCpu = metrics.reduce((sum, m) => sum + m.cpu_time, 0) / metrics.length;
   const avgMem = metrics.reduce((sum, m) => sum + m.memory_usage, 0) / metrics.length;
   const avgExec = metrics.reduce((sum, m) => sum + m.execution_time, 0) / metrics.length;
-  const minMem = Math.min(...metrics.map(m => m.memory_usage));
-  const maxMem = Math.max(...metrics.map(m => m.memory_usage));
+  const minMem = metrics.reduce((min, m) => Math.min(min, m.memory_usage), Infinity);
+  const maxMem = metrics.reduce((max, m) => Math.max(max, m.memory_usage), -Infinity);
 
   const summaryY = metricsY + metricsHeight + 1;
   const summary = blessed.box({

@@ -25,6 +25,7 @@ void set_cpu_affinity(int core_id)
 // Binary search function
 int binary_search(const std::vector<int>& arr, int target)
 {
+    if (arr.empty()) return -1;
     int left = 0;
     int right = arr.size() - 1;
 

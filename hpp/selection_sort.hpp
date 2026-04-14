@@ -7,12 +7,12 @@
 // Selection sort function - O(n^2) time complexity
 void selection_sort(std::vector<int>& arr)
 {
-    int n = arr.size();
-    for (int i = 0; i < n - 1; ++i)
+    size_t n = arr.size();
+    for (size_t i = 0; i + 1 < n; ++i)
     {
         // Find the minimum element in unsorted part
-        int min_idx = i;
-        for (int j = i + 1; j < n; ++j)
+        size_t min_idx = i;
+        for (size_t j = i + 1; j < n; ++j)
         {
             if (arr[j] < arr[min_idx])
             {

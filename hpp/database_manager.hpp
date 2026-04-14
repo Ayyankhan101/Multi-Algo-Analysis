@@ -41,7 +41,7 @@ public:
         std::string sanitized_table_name = table_name;
         // Replace any non-alphanumeric characters with underscore
         for(auto& c : sanitized_table_name) {
-            if(!std::isalnum(c) && c != '_') {
+            if(!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
                 c = '_';
             }
         }
@@ -65,7 +65,7 @@ public:
         std::string sanitized_table_name = table_name;
         // Replace any non-alphanumeric characters with underscore
         for(auto& c : sanitized_table_name) {
-            if(!std::isalnum(c) && c != '_') {
+            if(!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
                 c = '_';
             }
         }
@@ -100,7 +100,7 @@ public:
         std::string sanitized_table_name = table_name;
         // Replace any non-alphanumeric characters with underscore
         for(auto& c : sanitized_table_name) {
-            if(!std::isalnum(c) && c != '_') {
+            if(!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
                 c = '_';
             }
         }

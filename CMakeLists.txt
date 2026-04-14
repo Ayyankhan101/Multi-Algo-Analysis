@@ -63,6 +63,18 @@ target_include_directories(linear_search INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/h
 add_library(merge_sort INTERFACE)
 target_include_directories(merge_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 
+# Insertion Sort Library
+add_library(insertion_sort INTERFACE)
+target_include_directories(insertion_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Selection Sort Library
+add_library(selection_sort INTERFACE)
+target_include_directories(selection_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Bubble Sort Library
+add_library(bubble_sort INTERFACE)
+target_include_directories(bubble_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
 # --- Executable ---
 add_executable(resource_monitor_app
     src/main_application.cpp
@@ -76,6 +88,9 @@ target_link_libraries(resource_monitor_app
     binary_search
     linear_search
     merge_sort
+    insertion_sort
+    selection_sort
+    bubble_sort
     ${SQLite3_LIBRARIES}
     Threads::Threads
 )

@@ -78,9 +78,38 @@ export function showExecutionScreen(results: RunResult[], rawOutput: string, alg
 
     // Summary
     const foundCount = results.filter(r => r.found).length;
-    const avgCpu = results.reduce((sum, r) => sum + r.cpuTime, 0) / results.length;
-    const avgMem = results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length;
-    const avgExec = results.reduce((sum, r) => sum + r.execTime, 0) / results.length;
+    const avgCpu = results.length > 0 ? results.reduce((sum, r) => sum + r.cpuTime, 0) / results.length : 0;
+    const avgMem = results.length > 0 ? results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length : 0;
+    const avgExec = results.length > 0 ? results.reduce((sum, r) => sum + r.execTime, 0) / results.length : 0;
+
+    if (results.length === 0) {
+      // Show empty state
+      const footer = blessed.box({
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        height: 1,
+        align: 'center',
+        content: '{gray-fg}Press any key to continue{/gray-fg}',
+        tags: true,
+      });
+
+      const emptySummary = blessed.box({
+        top: 5,
+        left: '5%',
+        width: '90%',
+        height: 3,
+        tags: true,
+        content: `{bold}No results to display.{/bold}`,
+        align: 'center',
+      });
+      screen.append(header);
+      screen.append(emptySummary);
+      screen.append(footer);
+      screen.key(['escape', 'q', 'enter', 'C-c', 'space'], () => { resolve(); screen.destroy(); });
+      screen.render();
+      return;
+    }
 
     const summaryY = resultsY + resultsHeight + 1;
     const summary = blessed.box({
