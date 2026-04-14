@@ -14,7 +14,7 @@ export function getDefaultAlgorithmParams(): AlgorithmParams {
     dataStep: 3,
     cpuCore: 0,
     totalRuns: 5,
-    customTargets: [1000, 50000, 100000, 500000, 999999],
+    customTargets: [0, 249998, 499998, 749997, 999999],
     useCustomTargets: false,
   };
 }

@@ -256,7 +256,21 @@ int main(int argc, char* argv[])
                 targets.push_back(std::stoi(target_str));
             }
         } else {
-            targets = {1000, 50000, 100000, 500000, 999999};
+            // Auto-generate valid targets based on data_size and data_step
+            // Targets must be multiples of data_step and within array bounds
+            const int num_elements = data_size / data_step;
+            const int max_value = (num_elements - 1) * data_step;
+            targets = {
+                0,                                          // First element
+                max_value / 4,                              // 25% through array
+                max_value / 2,                              // Middle element
+                max_value * 3 / 4,                          // 75% through array
+                max_value                                   // Last element
+            };
+            // Ensure all targets are valid multiples of data_step
+            for (auto& t : targets) {
+                t = (t / data_step) * data_step;
+            }
         }
         
         // Adjust targets count to match total_runs
