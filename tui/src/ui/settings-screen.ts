@@ -11,6 +11,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
 
     let params: AlgorithmParams = { ...settings.algorithmParams };
     let focusedField = 0;
+    let dialogOpen = false;
 
     const fields = [
       { key: 'dataSize' as const, label: 'Data Size', desc: 'Number of elements to generate' },
@@ -33,12 +34,6 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
     });
 
     // Create list for navigation
-    const listItems = fields.map((f, i) => `${i === focusedField ? '▸' : ' '} ${f.label}: ${
-      f.key === 'useCustomTargets' ? (params[f.key] ? 'Yes' : 'No') :
-      f.key === 'customTargets' ? (params[f.key] as number[]).join(', ') :
-      String(params[f.key])
-    }`);
-
     const settingsList = blessed.list({
       top: 2,
       left: '5%',
@@ -48,7 +43,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       vi: true,
       mouse: true,
       tags: true,
-      items: listItems,
+      items: buildListItems(),
       style: {
         selected: {
           bg: 'blue',
@@ -77,7 +72,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       left: 0,
       width: '100%',
       height: 1,
-      content: '{gray-fg}S: Save | R: Reset | Q: Quit | ↑/↓: Navigate | Enter: Edit/Toggle | Esc: Back{/gray-fg}',
+      content: '{gray-fg}S: Save | R: Reset | Q: Quit | Up/Down: Navigate | Enter: Edit/Toggle{/gray-fg}',
       tags: true,
       align: 'center',
     });
@@ -90,11 +85,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
     settingsList.select(0);
     settingsList.focus();
 
-    // Key handlers
-    screen.key(['s'], () => { settings.algorithmParams = params; resolve(settings); screen.destroy(); });
-    screen.key(['r'], () => { resetToDefaults(); });
-    screen.key(['q', 'escape'], () => { resolve(settings); screen.destroy(); });
-
+    // List navigation
     settingsList.on('select', (item, index) => {
       focusedField = index;
       descBox.setContent(`{gray-fg}${fields[index].desc}{/gray-fg}`);
@@ -107,7 +98,9 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       screen.render();
     });
 
-    screen.key(['enter'], () => {
+    // Enter to edit/toggle
+    settingsList.on('action', () => {
+      if (dialogOpen) return;
       const field = fields[focusedField].key;
 
       if (field === 'useCustomTargets') {
@@ -121,6 +114,11 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       }
     });
 
+    // Global shortcuts (only when no dialog is open)
+    screen.key(['s'], () => { if (!dialogOpen) { settings.algorithmParams = params; resolve(settings); screen.destroy(); } });
+    screen.key(['r'], () => { if (!dialogOpen) { resetToDefaults(); } });
+    screen.key(['q'], () => { if (!dialogOpen) { resolve(settings); screen.destroy(); } });
+
     screen.render();
 
     function resetToDefaults() {
@@ -128,22 +126,26 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       params = getDefaultAlgorithmParams();
       focusedField = 0;
       updateList();
+      descBox.setContent(`{gray-fg}${fields[0].desc}{/gray-fg}`);
       screen.render();
     }
 
-    function updateList() {
-      const items = fields.map((f, i) => `${i === focusedField ? '▸' : ' '} ${f.label}: ${
+    function buildListItems(): string[] {
+      return fields.map((f, i) => `${i === focusedField ? '▸' : ' '} ${f.label}: ${
         f.key === 'useCustomTargets' ? (params[f.key] ? '{green-fg}Yes{/green-fg}' : 'No') :
         f.key === 'customTargets' ? (params[f.key] as number[]).join(', ') :
         String(params[f.key])
       }`);
-      settingsList.setItems(items);
+    }
+
+    function updateList() {
+      settingsList.setItems(buildListItems());
       settingsList.select(focusedField);
     }
 
     function showNumberEditDialog(fieldKey: keyof AlgorithmParams) {
       const field = fields.find(f => f.key === fieldKey)!;
-      let currentValue = String(params[fieldKey]);
+      const currentValue = String(params[fieldKey]);
 
       const form = blessed.form({
         top: 'center',
@@ -196,7 +198,15 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       form.append(helpText);
       screen.append(form);
       textBox.focus();
+      dialogOpen = true;
       screen.render();
+
+      function closeDialog() {
+        dialogOpen = false;
+        screen.remove(form);
+        settingsList.focus();
+        screen.render();
+      }
 
       textBox.on('submit', (val: string) => {
         const num = parseInt(val);
@@ -204,22 +214,16 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
           (params as any)[fieldKey] = num;
           updateList();
         }
-        screen.remove(form);
-        settingsList.focus();
-        screen.render();
+        closeDialog();
       });
 
-      const escHandler = () => {
-        screen.remove(form);
-        screen.removeListener('escape', escHandler);
-        settingsList.focus();
-        screen.render();
-      };
-      screen.key(['escape'], escHandler);
+      // Override escape only for this dialog
+      const escHandler = () => { closeDialog(); };
+      screen.once('escape', escHandler);
     }
 
     function showCustomTargetsDialog() {
-      let currentValue = params.customTargets.join(', ');
+      const currentValue = params.customTargets.join(', ');
 
       const form = blessed.form({
         top: 'center',
@@ -262,7 +266,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
         left: 0,
         width: '100%',
         height: 1,
-        content: '  {gray-fg}Enter numbers separated by commas | Enter: confirm | Esc: cancel{/gray-fg}',
+        content: '  {gray-fg}Comma-separated values (e.g., 1000, 50000, 100000){/gray-fg}\n  {gray-fg}Enter: confirm | Esc: cancel{/gray-fg}',
         tags: true,
         align: 'center',
       });
@@ -272,7 +276,15 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
       form.append(helpText);
       screen.append(form);
       textBox.focus();
+      dialogOpen = true;
       screen.render();
+
+      function closeDialog() {
+        dialogOpen = false;
+        screen.remove(form);
+        settingsList.focus();
+        screen.render();
+      }
 
       textBox.on('submit', (val: string) => {
         const parts = val.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n > 0);
@@ -280,18 +292,11 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings> 
           params.customTargets = parts;
           updateList();
         }
-        screen.remove(form);
-        settingsList.focus();
-        screen.render();
+        closeDialog();
       });
 
-      const escHandler = () => {
-        screen.remove(form);
-        screen.removeListener('escape', escHandler);
-        settingsList.focus();
-        screen.render();
-      };
-      screen.key(['escape'], escHandler);
+      const escHandler = () => { closeDialog(); };
+      screen.once('escape', escHandler);
     }
   });
 }
