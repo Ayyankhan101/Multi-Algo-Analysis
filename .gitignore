@@ -1,0 +1,35 @@
+# Build artifacts
+build/
+*.o
+*.out
+resource_monitor_app
+
+# Database
+database/*.db
+
+# Generated outputs
+csv/*.csv
+png/*.png
+png/*.dat
+png/*.plt
+*.dat
+*.plt
+
+# TUI
+tui/node_modules/
+tui/dist/
+
+# Qwen local settings
+.qwen/settings.json
+.qwen/settings.json.orig
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

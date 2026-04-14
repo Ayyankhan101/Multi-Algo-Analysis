@@ -33,47 +33,49 @@ endif()
 
 # --- Libraries ---
 # Resource Monitor Library
-add_library(resource_monitor
-    resource_monitor.hpp
-)
-target_include_directories(resource_monitor PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(resource_monitor INTERFACE)
+target_include_directories(resource_monitor INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 
 # Database Manager Library
-add_library(database_manager
-    database_manager.hpp
-)
-target_include_directories(database_manager PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} /usr/include)
-target_link_libraries(database_manager PRIVATE ${SQLite3_LIBRARIES})
-target_compile_definitions(database_manager PRIVATE HAS_SQLITE=1)
+add_library(database_manager INTERFACE)
+target_include_directories(database_manager INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp /usr/include)
+target_link_libraries(database_manager INTERFACE ${SQLite3_LIBRARIES})
+target_compile_definitions(database_manager INTERFACE HAS_SQLITE=1)
 
 # Plot Generator Library
-add_library(plot_generator
-    plot_generator.hpp
-)
-target_include_directories(plot_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(plot_generator INTERFACE)
+target_include_directories(plot_generator INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 if (GNUPLOT_EXECUTABLE)
-    target_compile_definitions(plot_generator PRIVATE HAS_GNUPLOT=1)
+    target_compile_definitions(plot_generator INTERFACE HAS_GNUPLOT=1)
 else()
-    target_compile_definitions(plot_generator PRIVATE HAS_GNUPLOT=0)
+    target_compile_definitions(plot_generator INTERFACE HAS_GNUPLOT=0)
 endif()
 
 # Binary Search Library
-add_library(binary_search
-    binary_search_single_core.cpp
-)
-target_include_directories(binary_search PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(binary_search INTERFACE)
+target_include_directories(binary_search INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Linear Search Library
+add_library(linear_search INTERFACE)
+target_include_directories(linear_search INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Merge Sort Library
+add_library(merge_sort INTERFACE)
+target_include_directories(merge_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 
 # --- Executable ---
 add_executable(resource_monitor_app
-    main_application.cpp
+    src/main_application.cpp
 )
-target_include_directories(resource_monitor_app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(resource_monitor_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 target_link_libraries(resource_monitor_app
     PRIVATE
     resource_monitor
     database_manager
     plot_generator
     binary_search
+    linear_search
+    merge_sort
     ${SQLite3_LIBRARIES}
     Threads::Threads
 )
@@ -83,7 +85,7 @@ target_link_libraries(resource_monitor_app
 add_executable(resource_monitor_tests
     tests/test_resource_monitor.cpp
 )
-target_include_directories(resource_monitor_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(resource_monitor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 target_link_libraries(resource_monitor_tests
     PRIVATE
     resource_monitor
@@ -96,7 +98,7 @@ add_test(NAME resource_monitor_tests COMMAND resource_monitor_tests)
 add_executable(database_manager_tests
     tests/test_database_manager.cpp
 )
-target_include_directories(database_manager_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(database_manager_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 target_link_libraries(database_manager_tests
     PRIVATE
     database_manager
@@ -109,6 +111,7 @@ add_test(NAME database_manager_tests COMMAND database_manager_tests)
 add_executable(plot_generator_tests
     tests/test_plot_generator.cpp
 )
+target_include_directories(plot_generator_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 target_link_libraries(plot_generator_tests
     PRIVATE
     plot_generator
@@ -121,6 +124,7 @@ add_test(NAME plot_generator_tests COMMAND plot_generator_tests)
 add_executable(binary_search_tests
     tests/test_binary_search.cpp
 )
+target_include_directories(binary_search_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 target_link_libraries(binary_search_tests
     PRIVATE
     binary_search
@@ -133,6 +137,7 @@ add_test(NAME binary_search_tests COMMAND binary_search_tests)
 add_executable(integration_tests
     tests/test_integration.cpp
 )
+target_include_directories(integration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 target_link_libraries(integration_tests
     PRIVATE
     resource_monitor

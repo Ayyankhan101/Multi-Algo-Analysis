@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../resource_monitor.hpp"
+#include "resource_monitor.hpp"
 #include <fstream>
 #include <chrono>
 #include <thread>
