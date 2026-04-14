@@ -169,19 +169,22 @@ export function generatePerformanceTrend(metrics: ResourceMetric[]): string {
   const execTimes = metrics.map(m => m.execution_time);
   
   // CPU Time sparkline
-  lines.push('{bold}CPU Time Trend{/bold}');
-  lines.push(`[${generateSparkline(cpuTimes, 50)}]`);
-  lines.push(`Min: ${Math.min(...cpuTimes).toExponential(2)}s  Max: ${Math.max(...cpuTimes).toExponential(2)}s\n`);
-  
+  const minCpu = Math.min(...cpuTimes);
+  const maxCpu = Math.max(...cpuTimes);
+  lines.push(`{bold}CPU Time Trend{/bold}  Min: ${minCpu.toExponential(2)}s  Max: ${maxCpu.toExponential(2)}s`);
+  lines.push(`[${generateSparkline(cpuTimes, 50)}]\n`);
+
   // Memory sparkline
-  lines.push('{bold}Memory Usage Trend (KB){/bold}');
-  lines.push(`[${generateSparkline(memoryValues, 50)}]`);
-  lines.push(`Min: ${Math.min(...memoryValues)}KB  Max: ${Math.max(...memoryValues)}KB\n`);
-  
+  const minMem = Math.min(...memoryValues);
+  const maxMem = Math.max(...memoryValues);
+  lines.push(`{bold}Memory Usage Trend (KB){/bold}  Min: ${minMem}KB  Max: ${maxMem}KB`);
+  lines.push(`[${generateSparkline(memoryValues, 50)}]\n`);
+
   // Execution Time sparkline
-  lines.push('{bold}Execution Time Trend{/bold}');
+  const minExec = Math.min(...execTimes);
+  const maxExec = Math.max(...execTimes);
+  lines.push(`{bold}Execution Time Trend{/bold}  Min: ${minExec.toExponential(2)}s  Max: ${maxExec.toExponential(2)}s`);
   lines.push(`[${generateSparkline(execTimes, 50)}]`);
-  lines.push(`Min: ${Math.min(...execTimes).toExponential(2)}s  Max: ${Math.max(...execTimes).toExponential(2)}s`);
   
   return lines.join('\n');
 }
