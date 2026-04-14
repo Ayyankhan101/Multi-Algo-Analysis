@@ -17,6 +17,26 @@
 #include "database_manager.hpp"
 #endif
 
+// Simple JSON helper to escape strings and build JSON manually
+std::string json_escape(const std::string& s) {
+    std::string result;
+    for (char c : s) {
+        switch (c) {
+            case '"': result += "\\\""; break;
+            case '\\': result += "\\\\"; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default: result += c;
+        }
+    }
+    return result;
+}
+
+void emit_json_line(const std::string& key_value_pairs) {
+    std::cout << "{" << key_value_pairs << "}" << std::endl;
+}
+
 enum class AlgorithmType {
     BINARY_SEARCH,
     LINEAR_SEARCH,
@@ -69,11 +89,14 @@ int main(int argc, char* argv[])
         // Parse command line arguments for algorithm selection
         AlgorithmType selected_algo = AlgorithmType::BINARY_SEARCH;
         bool list_algorithms = false;
-        
+        bool use_json_output = false;
+
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--list" || arg == "-l") {
                 list_algorithms = true;
+            } else if (arg == "--json" || arg == "-j") {
+                use_json_output = true;
             } else if (arg == "--algorithm" || arg == "-a") {
                 if (i + 1 < argc) {
                     std::string algo_name = argv[++i];
@@ -96,17 +119,25 @@ int main(int argc, char* argv[])
             for (const auto& algo : get_available_algorithms()) {
                 std::cout << "  " << algo.name << " - " << algo.description << std::endl;
             }
-            std::cout << "\nUsage: ./resource_monitor_app [--algorithm <name>] [--list]" << std::endl;
+            std::cout << "\nUsage: ./resource_monitor_app [--algorithm <name>] [--list] [--json]" << std::endl;
             std::cout << "  --algorithm, -a  Select algorithm to run (binary, linear, merge)" << std::endl;
             std::cout << "  --list, -l       List available algorithms" << std::endl;
+            std::cout << "  --json, -j       Output results as JSON lines (for TUI integration)" << std::endl;
             return 0;
         }
         
         // Set CPU affinity to core 0 (static assignment)
         const int core_id = 0;
         set_cpu_affinity(core_id);
-        std::cout << "Running on CPU core: " << core_id << std::endl;
-        std::cout << "Selected algorithm: " << algorithm_to_string(selected_algo) << std::endl;
+        
+        std::string algo_name = algorithm_to_string(selected_algo);
+
+        if (use_json_output) {
+            emit_json_line("\"type\":\"config\",\"algorithm\":\"" + json_escape(algo_name) + "\",\"cpu_core\":" + std::to_string(core_id) + ",\"total_runs\":" + std::to_string(5));
+        } else {
+            std::cout << "Running on CPU core: " << core_id << std::endl;
+            std::cout << "Selected algorithm: " << algo_name << std::endl;
+        }
 
         // Generate timestamp for file labeling
         auto now = std::chrono::system_clock::now();
@@ -118,17 +149,19 @@ int main(int argc, char* argv[])
         // Initialize monitoring
         ResourceMonitor monitor;
 
-        std::string algo_name = algorithm_to_string(selected_algo);
-
         #ifdef HAS_SQLITE
             // Use a single database file with multiple tables
             DatabaseManager db_manager("database/resource_metrics.db");
-            std::cout << "Database initialized: database/resource_metrics.db" << std::endl;
+            if (!use_json_output) {
+                std::cout << "Database initialized: database/resource_metrics.db" << std::endl;
+            }
 
             // Create a table for this specific run with timestamp
             std::string table_name = algo_name + "_" + timestamp;
             db_manager.create_run_table(table_name);
-            std::cout << "Created table: " << table_name << std::endl;
+            if (!use_json_output) {
+                std::cout << "Created table: " << table_name << std::endl;
+            }
         #endif
 
         // Create test data
@@ -145,8 +178,13 @@ int main(int argc, char* argv[])
         for (size_t i = 0; i < targets.size(); ++i)
         {
             int target = targets[i];
-            std::cout << "Run " << (i + 1) << "/" << targets.size() 
-                      << " - Target: " << target << std::endl;
+            
+            if (use_json_output) {
+                emit_json_line("\"type\":\"run_start\",\"run\":" + std::to_string(i + 1) + ",\"total_runs\":" + std::to_string(targets.size()) + ",\"target\":" + std::to_string(target));
+            } else {
+                std::cout << "Run " << (i + 1) << "/" << targets.size()
+                          << " - Target: " << target << std::endl;
+            }
 
             // Start monitoring
             monitor.start_monitoring();
@@ -175,33 +213,57 @@ int main(int argc, char* argv[])
 
             // Print result info
             if (selected_algo != AlgorithmType::MERGE_SORT) {
-                int result = (selected_algo == AlgorithmType::BINARY_SEARCH) 
+                int result = (selected_algo == AlgorithmType::BINARY_SEARCH)
                     ? binary_search(data, target)
                     : linear_search(data, target);
-                
-                if (result != -1)
-                {
-                    std::cout << "  Found at index: " << result
-                              << " (value: " << data[result] << ")" << std::endl;
-                }
-                else
-                {
-                    std::cout << "  Not found" << std::endl;
+
+                if (use_json_output) {
+                    std::string found_status = (result != -1) ? "true" : "false";
+                    std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
+                                            ",\"target\":" + std::to_string(target) +
+                                            ",\"found\":" + found_status;
+                    if (result != -1) {
+                        json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
+                    }
+                    json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
+                                 ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                 ",\"exec_time\":" + std::to_string(run_data.execution_time);
+                    emit_json_line(json_result);
+                } else {
+                    if (result != -1)
+                    {
+                        std::cout << "  Found at index: " << result
+                                  << " (value: " << data[result] << ")" << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "  Not found" << std::endl;
+                    }
+
+                    std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
+                              << "Memory: " << run_data.memory_usage << "KB, "
+                              << "Exec Time: " << run_data.execution_time << "s" << std::endl;
                 }
             } else {
-                std::cout << "  Sorted " << data.size() << " elements" << std::endl;
+                if (use_json_output) {
+                    emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
+                                 ",\"sorted_elements\":" + std::to_string(data.size()) +
+                                 ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
+                                 ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                 ",\"exec_time\":" + std::to_string(run_data.execution_time));
+                } else {
+                    std::cout << "  Sorted " << data.size() << " elements" << std::endl;
+                    std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
+                              << "Memory: " << run_data.memory_usage << "KB, "
+                              << "Exec Time: " << run_data.execution_time << "s" << std::endl;
+                }
             }
-
-            std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
-                      << "Memory: " << run_data.memory_usage << "KB, "
-                      << "Exec Time: " << run_data.execution_time << "s" << std::endl;
         }
 
         // Save monitoring data to CSV in the csv folder with proper labeling
         std::string csv_filename = "csv/" + algo_name + "_" + timestamp + ".csv";
         monitor.save_to_csv(csv_filename);
-        std::cout << "\nResource data saved to CSV file: " << csv_filename << std::endl;
-
+        
         // Generate plots from CSV data
         PlotGenerator plotter;
         std::vector<std::vector<std::string>> csv_data;
@@ -226,13 +288,20 @@ int main(int argc, char* argv[])
         std::string png_output_prefix = "png/" + algo_name + "_" + timestamp;
         plotter.generate_plots(csv_data, png_output_prefix);
         std::string png_filename = png_output_prefix + ".png";
-        std::cout << "Plots generated as '" << png_filename << "'" << std::endl;
 
-        std::cout << "\nAll operations completed successfully!" << std::endl;
-        std::cout << "- Algorithm: " << algo_name << std::endl;
-        std::cout << "- Core used: " << core_id << std::endl;
-        std::cout << "- CSV export: " << csv_filename << std::endl;
-        std::cout << "- Visualization: " << png_filename << std::endl;
+        if (use_json_output) {
+            emit_json_line("\"type\":\"files\",\"csv\":\"" + json_escape(csv_filename) + "\",\"png\":\"" + json_escape(png_filename) + "\"");
+            emit_json_line("\"type\":\"done\",\"algorithm\":\"" + json_escape(algo_name) + "\",\"runs_completed\":" + std::to_string(targets.size()));
+        } else {
+            std::cout << "\nResource data saved to CSV file: " << csv_filename << std::endl;
+            std::cout << "Plots generated as '" << png_filename << "'" << std::endl;
+
+            std::cout << "\nAll operations completed successfully!" << std::endl;
+            std::cout << "- Algorithm: " << algo_name << std::endl;
+            std::cout << "- Core used: " << core_id << std::endl;
+            std::cout << "- CSV export: " << csv_filename << std::endl;
+            std::cout << "- Visualization: " << png_filename << std::endl;
+        }
 
     } catch (const std::exception& e)
     {

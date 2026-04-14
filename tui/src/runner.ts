@@ -11,6 +11,11 @@ export interface RunOutput {
   rawOutput: string;
 }
 
+interface JsonLine {
+  type: string;
+  [key: string]: any;
+}
+
 export function runAlgorithm(binaryPath: string, algorithmName: string = 'binary_search'): Promise<RunOutput> {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(binaryPath)) {
@@ -23,7 +28,8 @@ export function runAlgorithm(binaryPath: string, algorithmName: string = 'binary
     let csvFile = '';
     let pngFile: string | undefined;
 
-    const proc = spawn(binaryPath, ['--algorithm', algorithmName], {
+    // Use --json flag for structured output
+    const proc = spawn(binaryPath, ['--algorithm', algorithmName, '--json'], {
       cwd: path.dirname(binaryPath),
     });
 
@@ -31,42 +37,47 @@ export function runAlgorithm(binaryPath: string, algorithmName: string = 'binary
       const text = data.toString();
       rawOutput += text;
 
-      // Parse search results from output
-      const searchMatch = text.match(/Searching for target: (\d+)/);
-      if (searchMatch) {
-        results.push({
-          target: parseInt(searchMatch[1]),
-          found: false,
-          cpuTime: 0,
-          memoryUsage: 0,
-          execTime: 0,
-        });
-      }
-
-      const foundMatch = text.match(/Found at index: (\d+) \(value: (\d+)\)/);
-      if (foundMatch && results.length > 0) {
-        const last = results[results.length - 1];
-        last.found = true;
-        last.index = parseInt(foundMatch[1]);
-        last.value = parseInt(foundMatch[2]);
-      }
-
-      const metricsMatch = text.match(/CPU Time: ([\d.]+(?:e[+-]?\d+)?)s, Memory: (\d+)KB, Exec Time: ([\d.]+(?:e[+-]?\d+)?)/);
-      if (metricsMatch && results.length > 0) {
-        const last = results[results.length - 1];
-        last.cpuTime = parseFloat(metricsMatch[1]);
-        last.memoryUsage = parseInt(metricsMatch[2]);
-        last.execTime = parseFloat(metricsMatch[3]);
-      }
-
-      const csvMatch = text.match(/Resource data saved to CSV file: (.+)/);
-      if (csvMatch) {
-        csvFile = csvMatch[1].trim();
-      }
-
-      const pngMatch = text.match(/Visualization: (.+)/);
-      if (pngMatch) {
-        pngFile = pngMatch[1].trim();
+      // Parse JSON lines
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        
+        try {
+          const parsed: JsonLine = JSON.parse(trimmed);
+          
+          switch (parsed.type) {
+            case 'run_start':
+              // Start a new run
+              results.push({
+                target: parsed.target || 0,
+                found: false,
+                cpuTime: 0,
+                memoryUsage: 0,
+                execTime: 0,
+              });
+              break;
+              
+            case 'run_result':
+              // Update the last run with results
+              if (results.length > 0) {
+                const last = results[results.length - 1];
+                last.found = parsed.found || false;
+                if (parsed.index !== undefined) last.index = parsed.index;
+                if (parsed.value !== undefined) last.value = parsed.value;
+                last.cpuTime = parsed.cpu_time || 0;
+                last.memoryUsage = parsed.memory_usage || 0;
+                last.execTime = parsed.exec_time || 0;
+              }
+              break;
+              
+            case 'files':
+              if (parsed.csv) csvFile = parsed.csv;
+              if (parsed.png) pngFile = parsed.png;
+              break;
+          }
+        } catch (e) {
+          // Ignore non-JSON lines (e.g., stderr mixed in)
+        }
       }
     });
 
