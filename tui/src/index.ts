@@ -83,7 +83,7 @@ async function main() {
           loading.close();
 
           if (output.results.length > 0) {
-            await showExecutionScreen(output.results, output.rawOutput);
+            await showExecutionScreen(output.results, output.rawOutput, 'binary_search');
           } else {
             console.log(chalk.yellow('No results captured. Check the binary output.'));
           }
@@ -114,7 +114,7 @@ async function main() {
           loading.close();
 
           if (output.results.length > 0) {
-            await showExecutionScreen(output.results, output.rawOutput);
+            await showExecutionScreen(output.results, output.rawOutput, 'linear_search');
           } else {
             console.log(chalk.yellow('No results captured. Check the binary output.'));
           }
@@ -145,7 +145,7 @@ async function main() {
           loading.close();
 
           if (output.results.length > 0) {
-            await showExecutionScreen(output.results, output.rawOutput);
+            await showExecutionScreen(output.results, output.rawOutput, 'merge_sort');
           } else {
             console.log(chalk.yellow('No results captured. Check the binary output.'));
           }
