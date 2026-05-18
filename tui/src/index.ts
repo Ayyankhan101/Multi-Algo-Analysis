@@ -199,20 +199,6 @@ function saveSettings(settings: any): void {
   fs.writeFileSync(settingsPath, JSON.stringify(settings.algorithmParams, null, 2));
 }
 
-// Load settings from disk
-function loadSettings(): any | null {
-  const settingsPath = path.join(resolveProjectRoot(), '.settings.json');
-  if (fs.existsSync(settingsPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      return data;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 // Handle errors
 main().catch(err => {
   console.error(chalk.red('\n❌ Fatal error:'), err);

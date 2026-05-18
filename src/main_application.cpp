@@ -89,39 +89,6 @@ std::vector<AlgorithmConfig> get_available_algorithms() {
     };
 }
 
-void run_binary_search(ResourceMonitor& monitor, const std::vector<int>& data, int target) {
-    (void)monitor; // Monitoring is handled externally
-    binary_search(data, target);
-}
-
-void run_linear_search(ResourceMonitor& monitor, const std::vector<int>& data, int target) {
-    (void)monitor; // Monitoring is handled externally
-    linear_search(data, target);
-}
-
-void run_merge_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
-    (void)monitor; // Monitoring is handled externally
-    std::vector<int> data_copy = data;
-    merge_sort(data_copy);
-}
-
-void run_insertion_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
-    (void)monitor; // Monitoring is handled externally
-    std::vector<int> data_copy = data;
-    insertion_sort(data_copy);
-}
-
-void run_selection_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
-    (void)monitor; // Monitoring is handled externally
-    std::vector<int> data_copy = data;
-    selection_sort(data_copy);
-}
-
-void run_bubble_sort(ResourceMonitor& monitor, std::vector<int>& data, int) {
-    (void)monitor; // Monitoring is handled externally
-    std::vector<int> data_copy = data;
-    bubble_sort(data_copy);
-}
 
 int main(int argc, char* argv[])
 {
@@ -220,7 +187,7 @@ int main(int argc, char* argv[])
                 std::cout << "  " << algo.name << " - " << algo.description << std::endl;
             }
             std::cout << "\nUsage: ./resource_monitor_app [--algorithm <name>] [--list] [--json] [--stream]" << std::endl;
-            std::cout << "  --algorithm, -a  Select algorithm to run (binary, linear, merge)" << std::endl;
+            std::cout << "  --algorithm, -a  Select algorithm to run (binary, linear, merge, insertion, selection, bubble)" << std::endl;
             std::cout << "  --list, -l       List available algorithms" << std::endl;
             std::cout << "  --json, -j       Output results as JSON lines (for TUI integration)" << std::endl;
             std::cout << "  --stream, -s     Stream real-time metrics during execution (implies --json)" << std::endl;
@@ -335,6 +302,9 @@ int main(int argc, char* argv[])
             // Start monitoring
             monitor.start_monitoring();
 
+            bool is_search_algo = (selected_algo == AlgorithmType::BINARY_SEARCH ||
+                                   selected_algo == AlgorithmType::LINEAR_SEARCH);
+
             // For streaming, sample metrics during execution
             if (use_stream_output && use_json_output) {
                 // Emit start of run
@@ -342,176 +312,151 @@ int main(int argc, char* argv[])
 
                 auto stream_start = std::chrono::high_resolution_clock::now();
                 int result = -1;
-                int final_sample = 3; // Number of metric samples to emit
 
-                // Run algorithm once, sampling metrics at intervals during execution
-                for (int sample = 0; sample < final_sample; ++sample) {
-                    // Run algorithm (only on last iteration for sort algorithms to avoid redundant work)
-                    bool is_last_sample = (sample == final_sample - 1);
-                    
-                    switch (selected_algo) {
-                        case AlgorithmType::BINARY_SEARCH:
-                            // Search algorithms: run once and capture result
-                            if (is_last_sample) {
-                                result = binary_search(data, target);
-                            } else {
-                                // For sampling, still run but discard result
-                                binary_search(data, target);
-                            }
-                            break;
-                        case AlgorithmType::LINEAR_SEARCH:
-                            if (is_last_sample) {
-                                result = linear_search(data, target);
-                            } else {
-                                linear_search(data, target);
-                            }
-                            break;
-                        case AlgorithmType::MERGE_SORT:
-                        case AlgorithmType::INSERTION_SORT:
-                        case AlgorithmType::SELECTION_SORT:
-                        case AlgorithmType::BUBBLE_SORT:
-                            // Sort algorithms: only run on the last sample to avoid redundant sorts
-                            if (is_last_sample) {
-                                switch (selected_algo) {
-                                    case AlgorithmType::MERGE_SORT: run_merge_sort(monitor, data, 0); break;
-                                    case AlgorithmType::INSERTION_SORT: run_insertion_sort(monitor, data, 0); break;
-                                    case AlgorithmType::SELECTION_SORT: run_selection_sort(monitor, data, 0); break;
-                                    case AlgorithmType::BUBBLE_SORT: run_bubble_sort(monitor, data, 0); break;
-                                    default: break;
-                                }
-                                result = -1; // Sort algorithms don't have a result index
-                            }
-                            break;
-                        default:
-                            break;
-                    }
+                if (is_search_algo) {
+                    // Multi-sample for search algorithms (fast enough to repeat)
+                    int final_sample = 3;
+                    for (int sample = 0; sample < final_sample; ++sample) {
+                        if (selected_algo == AlgorithmType::BINARY_SEARCH) {
+                            result = binary_search(data, target);
+                        } else {
+                            result = linear_search(data, target);
+                        }
 
-                    // Sample current metrics
-                    {
                         struct rusage current_usage;
                         getrusage(RUSAGE_SELF, &current_usage);
-                        auto now = std::chrono::high_resolution_clock::now();
-                        double elapsed = std::chrono::duration<double>(now - stream_start).count();
+                        auto now_tp = std::chrono::high_resolution_clock::now();
+                        double elapsed = std::chrono::duration<double>(now_tp - stream_start).count();
                         emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) +
                                      ",\"sample\":" + std::to_string(sample + 1) +
                                      ",\"cpu_time\":" + std::to_string(current_usage.ru_utime.tv_sec + current_usage.ru_utime.tv_usec / 1000000.0) +
                                      ",\"memory_usage\":" + std::to_string(current_usage.ru_maxrss) +
                                      ",\"elapsed\":" + std::to_string(elapsed));
+
+                        if (sample < final_sample - 1) {
+                            std::this_thread::sleep_for(std::chrono::microseconds(100));
+                        }
+                    }
+                } else {
+                    // Single run for sort algorithms; sample metrics after completion
+                    switch (selected_algo) {
+                        case AlgorithmType::MERGE_SORT: { std::vector<int> c = data; merge_sort(c); break; }
+                        case AlgorithmType::INSERTION_SORT: { std::vector<int> c = data; insertion_sort(c); break; }
+                        case AlgorithmType::SELECTION_SORT: { std::vector<int> c = data; selection_sort(c); break; }
+                        case AlgorithmType::BUBBLE_SORT: { std::vector<int> c = data; bubble_sort(c); break; }
+                        default: break;
                     }
 
-                    // Small delay to spread out samples (skip on last sample)
-                    if (!is_last_sample) {
-                        std::this_thread::sleep_for(std::chrono::microseconds(100));
-                    }
+                    struct rusage current_usage;
+                    getrusage(RUSAGE_SELF, &current_usage);
+                    auto now_tp = std::chrono::high_resolution_clock::now();
+                    double elapsed = std::chrono::duration<double>(now_tp - stream_start).count();
+                    emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) +
+                                 ",\"sample\":1" +
+                                 ",\"cpu_time\":" + std::to_string(current_usage.ru_utime.tv_sec + current_usage.ru_utime.tv_usec / 1000000.0) +
+                                 ",\"memory_usage\":" + std::to_string(current_usage.ru_maxrss) +
+                                 ",\"elapsed\":" + std::to_string(elapsed));
                 }
 
                 // End monitoring and get final data
                 auto run_data = monitor.end_monitoring();
                 monitor.add_data_point(run_data);
 
-                // Store data in database if SQLite is available
                 #ifdef HAS_SQLITE
                     db_manager.insert_resource_data(table_name, run_data.timestamp, run_data.cpu_time, run_data.memory_usage, run_data.execution_time);
                 #endif
 
-                // Emit final result
-                if (use_json_output) {
-                    bool is_search_algo = (selected_algo == AlgorithmType::BINARY_SEARCH ||
-                                           selected_algo == AlgorithmType::LINEAR_SEARCH);
-                    if (is_search_algo) {
-                        std::string found_status = (result != -1) ? "true" : "false";
+                if (is_search_algo) {
+                    std::string found_status = (result != -1) ? "true" : "false";
+                    std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
+                                            ",\"target\":" + std::to_string(target) +
+                                            ",\"found\":" + found_status;
+                    if (result != -1) {
+                        json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
+                    }
+                    json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
+                                 ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                 ",\"exec_time\":" + std::to_string(run_data.execution_time);
+                    emit_json_line(json_result);
+                } else {
+                    emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
+                                 ",\"sorted_elements\":" + std::to_string(data.size()) +
+                                 ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
+                                 ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
+                                 ",\"exec_time\":" + std::to_string(run_data.execution_time));
+                }
+            } else {
+                // Non-streaming path — run algorithm once inside monitoring window
+                int search_result = -1;
+
+                switch (selected_algo) {
+                    case AlgorithmType::BINARY_SEARCH:
+                        search_result = binary_search(data, target);
+                        break;
+                    case AlgorithmType::LINEAR_SEARCH:
+                        search_result = linear_search(data, target);
+                        break;
+                    case AlgorithmType::MERGE_SORT: {
+                        std::vector<int> data_copy = data;
+                        merge_sort(data_copy);
+                        break;
+                    }
+                    case AlgorithmType::INSERTION_SORT: {
+                        std::vector<int> data_copy = data;
+                        insertion_sort(data_copy);
+                        break;
+                    }
+                    case AlgorithmType::SELECTION_SORT: {
+                        std::vector<int> data_copy = data;
+                        selection_sort(data_copy);
+                        break;
+                    }
+                    case AlgorithmType::BUBBLE_SORT: {
+                        std::vector<int> data_copy = data;
+                        bubble_sort(data_copy);
+                        break;
+                    }
+                }
+
+                auto run_data = monitor.end_monitoring();
+                monitor.add_data_point(run_data);
+
+                #ifdef HAS_SQLITE
+                    db_manager.insert_resource_data(table_name, run_data.timestamp, run_data.cpu_time, run_data.memory_usage, run_data.execution_time);
+                #endif
+
+                if (is_search_algo) {
+                    if (use_json_output) {
+                        std::string found_status = (search_result != -1) ? "true" : "false";
                         std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
                                                 ",\"target\":" + std::to_string(target) +
                                                 ",\"found\":" + found_status;
-                        if (result != -1) {
-                            json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
+                        if (search_result != -1) {
+                            json_result += ",\"index\":" + std::to_string(search_result) + ",\"value\":" + std::to_string(data[search_result]);
                         }
                         json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
                                      ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
                                      ",\"exec_time\":" + std::to_string(run_data.execution_time);
                         emit_json_line(json_result);
                     } else {
-                        // Sort algorithms: emit sorted_elements format
-                        emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
-                                     ",\"sorted_elements\":" + std::to_string(data.size()) +
-                                     ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
-                                     ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
-                                     ",\"exec_time\":" + std::to_string(run_data.execution_time));
-                    }
-                }
-            } else {
-                // Original non-streaming path
-                switch (selected_algo) {
-                    case AlgorithmType::BINARY_SEARCH:
-                        run_binary_search(monitor, data, target);
-                        break;
-                    case AlgorithmType::LINEAR_SEARCH:
-                        run_linear_search(monitor, data, target);
-                        break;
-                    case AlgorithmType::MERGE_SORT:
-                        run_merge_sort(monitor, data, 0);
-                        break;
-                    case AlgorithmType::INSERTION_SORT:
-                        run_insertion_sort(monitor, data, 0);
-                        break;
-                    case AlgorithmType::SELECTION_SORT:
-                        run_selection_sort(monitor, data, 0);
-                        break;
-                    case AlgorithmType::BUBBLE_SORT:
-                        run_bubble_sort(monitor, data, 0);
-                        break;
-                }
-
-                // End monitoring and get data
-                auto run_data = monitor.end_monitoring();
-                monitor.add_data_point(run_data);
-
-                // Store data in database if SQLite is available
-                #ifdef HAS_SQLITE
-                    db_manager.insert_resource_data(table_name, run_data.timestamp, run_data.cpu_time, run_data.memory_usage, run_data.execution_time);
-                #endif
-
-                // Print result info
-                bool is_search_algo = (selected_algo == AlgorithmType::BINARY_SEARCH || 
-                                       selected_algo == AlgorithmType::LINEAR_SEARCH);
-                
-                if (is_search_algo) {
-                    int result = (selected_algo == AlgorithmType::BINARY_SEARCH)
-                        ? binary_search(data, target)
-                        : linear_search(data, target);
-
-                    if (use_json_output) {
-                        std::string found_status = (result != -1) ? "true" : "false";
-                        std::string json_result = "\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
-                                                ",\"target\":" + std::to_string(target) +
-                                                ",\"found\":" + found_status;
-                        if (result != -1) {
-                            json_result += ",\"index\":" + std::to_string(result) + ",\"value\":" + std::to_string(data[result]);
-                        }
-                        json_result += ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
-                                     ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
-                                     ",\"exec_time\":" + std::to_string(run_data.execution_time);
-                        emit_json_line(json_result);
-                    } else {
-                        if (result != -1)
+                        if (search_result != -1)
                         {
-                            std::cout << "  Found at index: " << result
-                                      << " (value: " << data[result] << ")" << std::endl;
+                            std::cout << "  Found at index: " << search_result
+                                      << " (value: " << data[search_result] << ")" << std::endl;
                         }
                         else
                         {
                             std::cout << "  Not found" << std::endl;
                         }
-
                         std::cout << "  CPU Time: " << run_data.cpu_time << "s, "
                                   << "Memory: " << run_data.memory_usage << "KB, "
                                   << "Exec Time: " << run_data.execution_time << "s" << std::endl;
                     }
                 } else {
                     if (use_json_output) {
-                        emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) + 
+                        emit_json_line("\"type\":\"run_result\",\"run\":" + std::to_string(i + 1) +
                                      ",\"sorted_elements\":" + std::to_string(data.size()) +
-                                     ",\"cpu_time\":" + std::to_string(run_data.cpu_time) + 
+                                     ",\"cpu_time\":" + std::to_string(run_data.cpu_time) +
                                      ",\"memory_usage\":" + std::to_string(run_data.memory_usage) +
                                      ",\"exec_time\":" + std::to_string(run_data.execution_time));
                     } else {

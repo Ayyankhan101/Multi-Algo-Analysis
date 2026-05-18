@@ -7,6 +7,9 @@
 #include <thread>
 #include <sched.h>
 #include <cstdlib>
+#include <cerrno>
+#include <cstring>
+#include <stdexcept>
 
 // Function to set CPU affinity to a specific core
 void set_cpu_affinity(int core_id)
@@ -17,8 +20,7 @@ void set_cpu_affinity(int core_id)
 
     if (sched_setaffinity(0, sizeof(mask), &mask) == -1)
     {
-        perror("sched_setaffinity");
-        exit(EXIT_FAILURE);
+        throw std::runtime_error(std::string("sched_setaffinity failed: ") + strerror(errno));
     }
 }
 

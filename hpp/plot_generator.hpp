@@ -139,9 +139,16 @@ private:
     }
 
     void execute_gnuplot(const std::string& script_file) {
-        std::string command = "gnuplot " + script_file;
+        // Single-quote the path to prevent shell injection from spaces/special chars
+        std::string quoted = "'";
+        for (char c : script_file) {
+            if (c == '\'') quoted += "'\\''";
+            else quoted += c;
+        }
+        quoted += "'";
+        std::string command = "gnuplot " + quoted;
         int result = std::system(command.c_str());
-        
+
         if (result != 0) {
             throw std::runtime_error("Failed to execute GNUplot command");
         }

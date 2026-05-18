@@ -148,6 +148,32 @@ target_link_libraries(binary_search_tests
 )
 add_test(NAME binary_search_tests COMMAND binary_search_tests)
 
+# Linear Search Tests
+add_executable(linear_search_tests
+    tests/test_linear_search.cpp
+)
+target_include_directories(linear_search_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+target_link_libraries(linear_search_tests
+    PRIVATE
+    linear_search
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME linear_search_tests COMMAND linear_search_tests)
+
+# Merge Sort Tests
+add_executable(merge_sort_tests
+    tests/test_merge_sort.cpp
+)
+target_include_directories(merge_sort_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+target_link_libraries(merge_sort_tests
+    PRIVATE
+    merge_sort
+    GTest::GTest
+    GTest::Main
+)
+add_test(NAME merge_sort_tests COMMAND merge_sort_tests)
+
 # Sorting Algorithms Tests
 add_executable(sorting_algorithms_tests
     tests/test_sorting_algorithms.cpp
@@ -158,6 +184,7 @@ target_link_libraries(sorting_algorithms_tests
     insertion_sort
     selection_sort
     bubble_sort
+    merge_sort
     GTest::GTest
     GTest::Main
 )
