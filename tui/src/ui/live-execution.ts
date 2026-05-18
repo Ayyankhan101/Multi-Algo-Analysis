@@ -1,7 +1,19 @@
 import blessed from 'blessed';
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { RunResult } from '../types';
+
+function resolveProjectRoot(binaryPath: string): string {
+  let dir = path.dirname(binaryPath);
+  for (let i = 0; i < 5; i++) {
+    if (fs.existsSync(path.join(dir, 'CMakeLists.txt'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.dirname(binaryPath);
+}
 
 const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
 
@@ -192,9 +204,8 @@ export function showLiveExecutionScreen(
       args.push('--targets', params.customTargets.join(','));
     }
 
-    // Spawn process with --stream flag
     const proc = spawn(binaryPath, args, {
-      cwd: path.dirname(binaryPath),
+      cwd: resolveProjectRoot(binaryPath),
     });
 
     // Set timeout
