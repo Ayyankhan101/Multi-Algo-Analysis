@@ -195,6 +195,10 @@ export function runSweep(
             const pt: SweepPoint = {
               n: parsed.n,
               execution_time: parsed.execution_time,
+              mean_time:   parsed.mean_time,
+              stddev_time: parsed.stddev_time,
+              median_time: parsed.median_time,
+              p95_time:    parsed.p95_time,
               cpu_time: parsed.cpu_time,
               memory_usage: parsed.memory_usage,
             };

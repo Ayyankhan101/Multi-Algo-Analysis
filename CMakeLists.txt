@@ -75,6 +75,26 @@ target_include_directories(selection_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/
 add_library(bubble_sort INTERFACE)
 target_include_directories(bubble_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
 
+# Quick Sort Library
+add_library(quick_sort INTERFACE)
+target_include_directories(quick_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Heap Sort Library
+add_library(heap_sort INTERFACE)
+target_include_directories(heap_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Shell Sort Library
+add_library(shell_sort INTERFACE)
+target_include_directories(shell_sort INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Interpolation Search Library
+add_library(interpolation_search INTERFACE)
+target_include_directories(interpolation_search INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
+# Perf Counter Library (Linux only)
+add_library(perf_counter INTERFACE)
+target_include_directories(perf_counter INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+
 # --- Executable ---
 add_executable(resource_monitor_app
     src/main_application.cpp
@@ -87,10 +107,15 @@ target_link_libraries(resource_monitor_app
     plot_generator
     binary_search
     linear_search
+    interpolation_search
     merge_sort
+    quick_sort
+    heap_sort
+    shell_sort
     insertion_sort
     selection_sort
     bubble_sort
+    perf_counter
     ${SQLite3_LIBRARIES}
     Threads::Threads
 )

@@ -14,6 +14,18 @@ function fmtTime(t: number): string {
   return `${t.toFixed(3)}s`;
 }
 
+function sparkline(values: number[], width: number = 30): string {
+  if (values.length === 0) return '';
+  const bars = ' ▁▂▃▄▅▆▇█';
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const sample = values.length > width
+    ? Array.from({ length: width }, (_, i) => values[Math.floor(i * values.length / width)])
+    : values;
+  return sample.map(v => bars[Math.min(8, Math.floor(((v - min) / range) * 8))]).join('');
+}
+
 export function showSweepScreen(
   binaryPath: string,
   algorithmName: string,
@@ -35,15 +47,20 @@ export function showSweepScreen(
 
     const tableHeader = blessed.box({
       top: 5, left: '3%', width: '94%', height: 1, tags: true,
-      content: '{bold}{cyan-fg}         N | Exec Time   | CPU Time    | Memory (KB){/cyan-fg}{/bold}',
+      content: '{bold}{cyan-fg}         N | Mean Time   | p95         | Stddev      | Memory (KB){/cyan-fg}{/bold}',
     });
 
     const tableBox = blessed.box({
-      top: 6, left: '3%', width: '94%', height: 14, tags: true, content: '',
+      top: 6, left: '3%', width: '94%', height: 12, tags: true, content: '',
+    });
+
+    const sparklineBox = blessed.box({
+      top: 19, left: '3%', width: '94%', height: 2, tags: true,
+      content: '{gray-fg}Time sparkline: (waiting for data…){/gray-fg}',
     });
 
     const summaryBox = blessed.box({
-      top: 21, left: '3%', width: '94%', height: 4, tags: true, content: '',
+      top: 22, left: '3%', width: '94%', height: 4, tags: true, content: '',
     });
 
     const footer = blessed.box({
@@ -55,10 +72,12 @@ export function showSweepScreen(
     screen.append(statusBar);
     screen.append(tableHeader);
     screen.append(tableBox);
+    screen.append(sparklineBox);
     screen.append(summaryBox);
     screen.append(footer);
 
     const rows: string[] = [];
+    const measuredTimes: number[] = [];
     let settled = false;
 
     function finish() {
@@ -69,10 +88,17 @@ export function showSweepScreen(
     screen.render();
 
     runSweep(binaryPath, algorithmName, params, (pt: SweepPoint) => {
-      const row = `  ${String(pt.n).padStart(9)} | ${fmtTime(pt.execution_time).padEnd(11)} | ${fmtTime(pt.cpu_time).padEnd(11)} | ${pt.memory_usage}`;
+      const t = pt.mean_time ?? pt.execution_time;
+      const p95 = pt.p95_time ?? pt.execution_time;
+      const sd  = pt.stddev_time ?? 0;
+      measuredTimes.push(t);
+      const row = `  ${String(pt.n).padStart(9)} | ${fmtTime(t).padEnd(11)} | ${fmtTime(p95).padEnd(11)} | ${fmtTime(sd).padEnd(11)} | ${Math.round(pt.memory_usage)}`;
       rows.push(row);
-      tableBox.setContent(rows.slice(-12).join('\n'));
-      statusBar.setContent(`{yellow-fg}⏳ Measured n=${pt.n}  exec=${fmtTime(pt.execution_time)}{/yellow-fg}`);
+      tableBox.setContent(rows.slice(-11).join('\n'));
+      statusBar.setContent(`{yellow-fg}⏳ Measured n=${pt.n}  mean=${fmtTime(t)}  p95=${fmtTime(p95)}{/yellow-fg}`);
+      if (measuredTimes.length >= 2) {
+        sparklineBox.setContent(`{cyan-fg}Time sparkline: ${sparkline(measuredTimes)}{/cyan-fg}  (${fmtTime(Math.min(...measuredTimes))} – ${fmtTime(Math.max(...measuredTimes))})`);
+      }
       screen.render();
     }).then((output) => {
       const fastest = output.points.reduce((a, b) => a.execution_time < b.execution_time ? a : b, output.points[0]);
@@ -108,7 +134,7 @@ export function showComparisonScreen(
 
     const header = blessed.box({
       top: 0, left: 0, width: '100%', height: 3, align: 'center', tags: true,
-      content: '{bold}{blue-fg}Algorithm Comparison Sweep{/blue-fg}{/bold}\n{gray-fg}All 6 algorithms benchmarked across input sizes (sorts use reverse-sorted data){/gray-fg}',
+      content: '{bold}{blue-fg}Algorithm Comparison Sweep{/blue-fg}{/bold}\n{gray-fg}All 10 algorithms benchmarked across input sizes (sorts use reverse-sorted data){/gray-fg}',
     });
 
     const statusBar = blessed.box({

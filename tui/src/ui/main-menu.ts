@@ -14,19 +14,23 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
     });
 
     const options: MenuOption[] = [
-      { label: 'Run Binary Search', description: 'Execute O(log n) search on sorted array' },
-      { label: 'Run Linear Search', description: 'Execute O(n) sequential search' },
-      { label: 'Run Merge Sort', description: 'Execute O(n log n) sorting algorithm' },
-      { label: 'Run Insertion Sort', description: 'Execute O(n^2) simple sorting algorithm' },
-      { label: 'Run Selection Sort', description: 'Execute O(n^2) in-place sorting algorithm' },
-      { label: 'Run Bubble Sort', description: 'Execute O(n^2) simple comparison sorting' },
-      { label: 'Complexity Sweep', description: 'Vary N and plot time vs input size for one algorithm' },
-      { label: 'Compare All Algorithms', description: 'Benchmark all 6 algorithms across input sizes and compare' },
-      { label: 'View Historical Runs', description: 'Browse past execution results' },
-      { label: 'View Latest Results', description: 'Show most recent execution data' },
-      { label: 'System Info', description: 'Display project and environment info' },
-      { label: 'Settings', description: 'Configure algorithm parameters' },
-      { label: 'Exit', description: 'Close the application' },
+      { label: 'Run Binary Search',        description: 'Execute O(log n) search on sorted array' },
+      { label: 'Run Linear Search',        description: 'Execute O(n) sequential search' },
+      { label: 'Run Interpolation Search', description: 'Execute O(log log n) avg search on uniform data' },
+      { label: 'Run Merge Sort',           description: 'Execute O(n log n) stable sorting algorithm' },
+      { label: 'Run Quick Sort',           description: 'Execute O(n log n) avg, O(n^2) worst-case sort' },
+      { label: 'Run Heap Sort',            description: 'Execute O(n log n) in-place comparison sort' },
+      { label: 'Run Shell Sort',           description: 'Execute O(n log^2 n) gap-sequence sort' },
+      { label: 'Run Insertion Sort',       description: 'Execute O(n^2) simple sorting algorithm' },
+      { label: 'Run Selection Sort',       description: 'Execute O(n^2) in-place sorting algorithm' },
+      { label: 'Run Bubble Sort',          description: 'Execute O(n^2) simple comparison sorting' },
+      { label: 'Complexity Sweep',         description: 'Vary N and plot time vs input size for one algorithm' },
+      { label: 'Compare All Algorithms',   description: 'Benchmark all 10 algorithms across input sizes' },
+      { label: 'View Historical Runs',     description: 'Browse past execution results' },
+      { label: 'View Latest Results',      description: 'Show most recent execution data' },
+      { label: 'System Info',              description: 'Display project and environment info' },
+      { label: 'Settings',                 description: 'Configure algorithm parameters' },
+      { label: 'Exit',                     description: 'Close the application' },
     ];
 
     // Header

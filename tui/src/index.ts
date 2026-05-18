@@ -129,31 +129,18 @@ async function main() {
     };
 
     switch (choice) {
-      case 0: // Run Binary Search
-        await runAlgorithmCase('binary_search');
-        break;
+      case 0:  await runAlgorithmCase('binary_search');        break;
+      case 1:  await runAlgorithmCase('linear_search');        break;
+      case 2:  await runAlgorithmCase('interpolation_search'); break;
+      case 3:  await runAlgorithmCase('merge_sort');           break;
+      case 4:  await runAlgorithmCase('quick_sort');           break;
+      case 5:  await runAlgorithmCase('heap_sort');            break;
+      case 6:  await runAlgorithmCase('shell_sort');           break;
+      case 7:  await runAlgorithmCase('insertion_sort');       break;
+      case 8:  await runAlgorithmCase('selection_sort');       break;
+      case 9:  await runAlgorithmCase('bubble_sort');          break;
 
-      case 1: // Run Linear Search
-        await runAlgorithmCase('linear_search');
-        break;
-
-      case 2: // Run Merge Sort
-        await runAlgorithmCase('merge_sort');
-        break;
-
-      case 3: // Run Insertion Sort
-        await runAlgorithmCase('insertion_sort');
-        break;
-
-      case 4: // Run Selection Sort
-        await runAlgorithmCase('selection_sort');
-        break;
-
-      case 5: // Run Bubble Sort
-        await runAlgorithmCase('bubble_sort');
-        break;
-
-      case 6: // Complexity Sweep
+      case 10: // Complexity Sweep
         try {
           const sweepAlgo = await chooseSweepAlgorithm();
           if (sweepAlgo) {
@@ -167,7 +154,7 @@ async function main() {
         }
         break;
 
-      case 7: // Compare All Algorithms
+      case 11: // Compare All Algorithms
         try {
           await showComparisonScreen(settings.binaryPath, {
             cpuCore: settings.algorithmParams.cpuCore,
@@ -178,7 +165,7 @@ async function main() {
         }
         break;
 
-      case 8: // View Historical Runs
+      case 12: // View Historical Runs
         if (!db) {
           console.log(chalk.yellow('\n⚠ No database available. Run the algorithm first.'));
           await new Promise<void>(resolve => setTimeout(resolve, 2000));
@@ -187,24 +174,24 @@ async function main() {
         }
         break;
 
-      case 9: // View Latest Results
+      case 13: // View Latest Results
         await showLatestResults(settings.csvPath);
         break;
 
-      case 10: // System Info
+      case 14: // System Info
         await showSystemInfo(settings);
         break;
 
-      case 11: // Settings
+      case 15: // Settings
         settings = await showSettingsScreen(settings);
         saveSettings(settings);
         console.log(chalk.green('\n✓ Settings updated and saved'));
         await new Promise<void>(resolve => setTimeout(resolve, 1000));
         break;
 
-      case 12: // Exit
+      case 16: // Exit
         running = false;
-        console.log(chalk.green('\n👋 Goodbye!\n'));
+        console.log(chalk.green('\n Goodbye!\n'));
         break;
 
       default:
@@ -222,7 +209,8 @@ async function main() {
 // Prompt user to pick one algorithm for the complexity sweep
 async function chooseSweepAlgorithm(): Promise<string | null> {
   const algorithms = [
-    'binary_search', 'linear_search', 'merge_sort',
+    'binary_search', 'linear_search', 'interpolation_search',
+    'merge_sort', 'quick_sort', 'heap_sort', 'shell_sort',
     'insertion_sort', 'selection_sort', 'bubble_sort',
   ];
   return new Promise<string | null>(resolve => {

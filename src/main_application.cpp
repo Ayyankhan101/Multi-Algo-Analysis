@@ -15,6 +15,11 @@
 #include "insertion_sort.hpp"
 #include "selection_sort.hpp"
 #include "bubble_sort.hpp"
+#include "quick_sort.hpp"
+#include "heap_sort.hpp"
+#include "shell_sort.hpp"
+#include "interpolation_search.hpp"
+#include "perf_counter.hpp"
 #include "resource_monitor.hpp"
 #include "plot_generator.hpp"
 
@@ -56,20 +61,64 @@ void emit_json_line(const std::string& key_value_pairs) {
 enum class AlgorithmType {
     BINARY_SEARCH,
     LINEAR_SEARCH,
+    INTERPOLATION_SEARCH,
     MERGE_SORT,
     INSERTION_SORT,
     SELECTION_SORT,
-    BUBBLE_SORT
+    BUBBLE_SORT,
+    QUICK_SORT,
+    HEAP_SORT,
+    SHELL_SORT
 };
+
+enum class DataType { SORTED, REVERSE, RANDOM, PARTIAL, DUPLICATES };
+
+static std::vector<int> generate_data(int n, DataType dt, int step = 1)
+{
+    std::vector<int> data(n);
+    switch (dt) {
+        case DataType::SORTED:
+            for (int i = 0; i < n; ++i) data[i] = i * step;
+            break;
+        case DataType::REVERSE:
+            for (int i = 0; i < n; ++i) data[i] = (n - 1 - i) * step;
+            break;
+        case DataType::RANDOM: {
+            unsigned seed = 42;
+            for (int i = 0; i < n; ++i) {
+                seed = seed * 1664525u + 1013904223u;
+                data[i] = static_cast<int>(seed % (static_cast<unsigned>(n) * step));
+            }
+            break;
+        }
+        case DataType::PARTIAL:
+            for (int i = 0; i < n; ++i) data[i] = i * step;
+            // Shuffle the second half only
+            for (int i = n / 2; i < n - 1; ++i) {
+                unsigned idx = static_cast<unsigned>(i) * 1664525u + 1013904223u;
+                idx = n / 2 + (idx % static_cast<unsigned>(n / 2));
+                std::swap(data[i], data[idx]);
+            }
+            break;
+        case DataType::DUPLICATES:
+            for (int i = 0; i < n; ++i) data[i] = (i % (n / 4 + 1)) * step;
+            break;
+    }
+    return data;
+}
 
 std::string algorithm_to_string(AlgorithmType algo) {
     switch (algo) {
-        case AlgorithmType::BINARY_SEARCH: return "binary_search";
-        case AlgorithmType::LINEAR_SEARCH: return "linear_search";
-        case AlgorithmType::MERGE_SORT: return "merge_sort";
-        case AlgorithmType::INSERTION_SORT: return "insertion_sort";
-        case AlgorithmType::SELECTION_SORT: return "selection_sort";
-        case AlgorithmType::BUBBLE_SORT: return "bubble_sort";
+        case AlgorithmType::BINARY_SEARCH:        return "binary_search";
+        case AlgorithmType::LINEAR_SEARCH:        return "linear_search";
+        case AlgorithmType::INTERPOLATION_SEARCH: return "interpolation_search";
+        case AlgorithmType::MERGE_SORT:           return "merge_sort";
+        case AlgorithmType::INSERTION_SORT:       return "insertion_sort";
+        case AlgorithmType::SELECTION_SORT:       return "selection_sort";
+        case AlgorithmType::BUBBLE_SORT:          return "bubble_sort";
+        case AlgorithmType::QUICK_SORT:           return "quick_sort";
+        case AlgorithmType::HEAP_SORT:            return "heap_sort";
+        case AlgorithmType::SHELL_SORT:           return "shell_sort";
         default: return "unknown";
     }
 }
@@ -82,12 +131,16 @@ struct AlgorithmConfig {
 
 std::vector<AlgorithmConfig> get_available_algorithms() {
     return {
-        {AlgorithmType::BINARY_SEARCH, "Binary Search", "O(log n) search on sorted array"},
-        {AlgorithmType::LINEAR_SEARCH, "Linear Search", "O(n) sequential search"},
-        {AlgorithmType::MERGE_SORT, "Merge Sort", "O(n log n) sorting algorithm"},
-        {AlgorithmType::INSERTION_SORT, "Insertion Sort", "O(n^2) simple sorting algorithm"},
-        {AlgorithmType::SELECTION_SORT, "Selection Sort", "O(n^2) in-place sorting algorithm"},
-        {AlgorithmType::BUBBLE_SORT, "Bubble Sort", "O(n^2) simple comparison sorting"}
+        {AlgorithmType::BINARY_SEARCH,        "Binary Search",        "O(log n) search on sorted array"},
+        {AlgorithmType::LINEAR_SEARCH,        "Linear Search",        "O(n) sequential search"},
+        {AlgorithmType::INTERPOLATION_SEARCH, "Interpolation Search", "O(log log n) avg search on uniform data"},
+        {AlgorithmType::MERGE_SORT,           "Merge Sort",           "O(n log n) stable sorting algorithm"},
+        {AlgorithmType::QUICK_SORT,           "Quick Sort",           "O(n log n) avg, O(n^2) worst-case sort"},
+        {AlgorithmType::HEAP_SORT,            "Heap Sort",            "O(n log n) in-place comparison sort"},
+        {AlgorithmType::SHELL_SORT,           "Shell Sort",           "O(n log^2 n) gap-sequence sort"},
+        {AlgorithmType::INSERTION_SORT,       "Insertion Sort",       "O(n^2) simple sorting algorithm"},
+        {AlgorithmType::SELECTION_SORT,       "Selection Sort",       "O(n^2) in-place sorting algorithm"},
+        {AlgorithmType::BUBBLE_SORT,          "Bubble Sort",          "O(n^2) simple comparison sorting"}
     };
 }
 
@@ -110,11 +163,13 @@ int main(int argc, char* argv[])
         int cpu_core = 0;
         int total_runs = 5;
         std::string custom_targets_str = "";
+        DataType data_type = DataType::SORTED; // default: sorted for searches, reverse for sorts
 
         // Sweep parameters
         int sweep_min = 1000;
         int sweep_max = -1; // -1 = auto based on algorithm
         int sweep_points = 10;
+        int sweep_runs = 5;  // measurement runs per sweep point (+ 3 warmup)
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -139,6 +194,14 @@ int main(int argc, char* argv[])
                         selected_algo = AlgorithmType::SELECTION_SORT;
                     } else if (algo_name == "bubble" || algo_name == "bubble_sort") {
                         selected_algo = AlgorithmType::BUBBLE_SORT;
+                    } else if (algo_name == "quick" || algo_name == "quick_sort") {
+                        selected_algo = AlgorithmType::QUICK_SORT;
+                    } else if (algo_name == "heap" || algo_name == "heap_sort") {
+                        selected_algo = AlgorithmType::HEAP_SORT;
+                    } else if (algo_name == "shell" || algo_name == "shell_sort") {
+                        selected_algo = AlgorithmType::SHELL_SORT;
+                    } else if (algo_name == "interpolation" || algo_name == "interpolation_search") {
+                        selected_algo = AlgorithmType::INTERPOLATION_SEARCH;
                     } else {
                         std::cerr << "Unknown algorithm: " << algo_name << std::endl;
                         return 1;
@@ -174,6 +237,22 @@ int main(int argc, char* argv[])
                 if (i + 1 < argc) sweep_max = std::stoi(argv[++i]);
             } else if (arg == "--sweep-points") {
                 if (i + 1 < argc) sweep_points = std::stoi(argv[++i]);
+            } else if (arg == "--sweep-runs") {
+                if (i + 1 < argc) sweep_runs = std::stoi(argv[++i]);
+            } else if (arg == "--data-type") {
+                if (i + 1 < argc) {
+                    std::string dt = argv[++i];
+                    if      (dt == "sorted")     data_type = DataType::SORTED;
+                    else if (dt == "reverse")    data_type = DataType::REVERSE;
+                    else if (dt == "random")     data_type = DataType::RANDOM;
+                    else if (dt == "partial")    data_type = DataType::PARTIAL;
+                    else if (dt == "duplicates") data_type = DataType::DUPLICATES;
+                    else {
+                        std::cerr << "Unknown --data-type: " << dt
+                                  << " (sorted|reverse|random|partial|duplicates)" << std::endl;
+                        return 1;
+                    }
+                }
             }
         }
 
@@ -240,7 +319,14 @@ int main(int argc, char* argv[])
                 bool is_quadratic = (selected_algo == AlgorithmType::INSERTION_SORT ||
                                      selected_algo == AlgorithmType::SELECTION_SORT ||
                                      selected_algo == AlgorithmType::BUBBLE_SORT);
-                sweep_max = compare_mode ? 50000 : (is_quadratic ? 100000 : 1000000);
+                bool is_nlogn = (selected_algo == AlgorithmType::MERGE_SORT ||
+                                 selected_algo == AlgorithmType::QUICK_SORT  ||
+                                 selected_algo == AlgorithmType::HEAP_SORT   ||
+                                 selected_algo == AlgorithmType::SHELL_SORT);
+                sweep_max = compare_mode ? 50000
+                          : is_quadratic ? 100000
+                          : is_nlogn     ? 5000000
+                          : 10000000; // searches
             }
 
             // Generate logarithmically spaced sizes
@@ -262,58 +348,117 @@ int main(int argc, char* argv[])
                 std::string algo_name = algorithm_to_string(selected_algo);
                 std::string sweep_csv = "csv/" + algo_name + "_sweep_" + timestamp + ".csv";
                 std::ofstream csv_out(sweep_csv);
-                csv_out << "n,execution_time,cpu_time,memory_usage\n";
+                csv_out << "n,mean_time,stddev_time,median_time,p95_time,cpu_time,memory_usage"
+                           ",instructions,cache_misses,branch_misses\n";
 
                 if (use_json_output) {
                     emit_json_line("\"type\":\"sweep_config\",\"algorithm\":\"" + json_escape(algo_name) +
                                   "\",\"sweep_min\":" + std::to_string(sweep_min) +
                                   ",\"sweep_max\":" + std::to_string(sweep_max) +
-                                  ",\"sweep_points\":" + std::to_string(sweep_points));
+                                  ",\"sweep_points\":" + std::to_string(sweep_points) +
+                                  ",\"sweep_runs\":" + std::to_string(sweep_runs));
                 } else {
                     std::cout << "Complexity sweep: " << algo_name
                               << "  N=" << sweep_min << ".." << sweep_max
-                              << "  points=" << sweep_points << std::endl;
+                              << "  points=" << sweep_points
+                              << "  runs_per_point=" << sweep_runs << std::endl;
                 }
 
                 bool is_search = (selected_algo == AlgorithmType::BINARY_SEARCH ||
-                                  selected_algo == AlgorithmType::LINEAR_SEARCH);
+                                  selected_algo == AlgorithmType::LINEAR_SEARCH  ||
+                                  selected_algo == AlgorithmType::INTERPOLATION_SEARCH);
+
+                PerfCounter perf;
 
                 for (int n : sweep_sizes) {
-                    // Sorted data for searches; reverse-sorted for sorts (worst case)
-                    std::vector<int> data(n);
-                    if (is_search) {
-                        std::iota(data.begin(), data.end(), 0);
-                    } else {
-                        std::iota(data.rbegin(), data.rend(), 0);
+                    // Data: use caller's --data-type or auto worst-case if default
+                    DataType effective_dt = data_type;
+                    if (data_type == DataType::SORTED) { // default — pick worst-case per algo
+                        effective_dt = is_search ? DataType::SORTED : DataType::REVERSE;
+                    }
+                    std::vector<int> data = generate_data(n, effective_dt);
+
+                    // Lambda to run one pass of the selected algorithm on this n
+                    auto run_once = [&](const std::vector<int>& d) {
+                        switch (selected_algo) {
+                            case AlgorithmType::BINARY_SEARCH:        binary_search(d, n/2); break;
+                            case AlgorithmType::LINEAR_SEARCH:        linear_search(d, n/2); break;
+                            case AlgorithmType::INTERPOLATION_SEARCH: interpolation_search(d, n/2); break;
+                            case AlgorithmType::MERGE_SORT:    { std::vector<int> c=d; merge_sort(c); break; }
+                            case AlgorithmType::QUICK_SORT:    { std::vector<int> c=d; quick_sort(c); break; }
+                            case AlgorithmType::HEAP_SORT:     { std::vector<int> c=d; heap_sort(c); break; }
+                            case AlgorithmType::SHELL_SORT:    { std::vector<int> c=d; shell_sort(c); break; }
+                            case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=d; insertion_sort(c); break; }
+                            case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=d; selection_sort(c); break; }
+                            case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=d; bubble_sort(c); break; }
+                        }
+                    };
+
+                    // 3 warmup runs (not measured)
+                    for (int w = 0; w < 3; ++w) run_once(data);
+
+                    // sweep_runs measured passes
+                    std::vector<double> times;
+                    times.reserve(sweep_runs);
+                    double sum_cpu = 0.0, sum_mem = 0.0;
+                    long long sum_instructions = 0, sum_cache_misses = 0, sum_branch_misses = 0;
+
+                    for (int r = 0; r < sweep_runs; ++r) {
+                        ResourceMonitor mon;
+                        mon.start_monitoring();
+                        if (perf.is_available()) perf.start();
+                        run_once(data);
+                        PerfSnapshot ps = perf.stop();
+                        auto d = mon.end_monitoring();
+                        times.push_back(d.execution_time);
+                        sum_cpu += d.cpu_time;
+                        sum_mem += d.memory_usage;
+                        if (ps.available) {
+                            sum_instructions  += ps.instructions;
+                            sum_cache_misses  += ps.cache_misses;
+                            sum_branch_misses += ps.branch_misses;
+                        }
                     }
 
-                    ResourceMonitor monitor;
-                    monitor.start_monitoring();
+                    // Compute statistics
+                    std::sort(times.begin(), times.end());
+                    double mean_t = 0.0;
+                    for (double t : times) mean_t += t;
+                    mean_t /= sweep_runs;
+                    double var = 0.0;
+                    for (double t : times) var += (t - mean_t) * (t - mean_t);
+                    double stddev_t = std::sqrt(var / sweep_runs);
+                    double median_t = times[sweep_runs / 2];
+                    double p95_t    = times[static_cast<int>(sweep_runs * 0.95)];
+                    double mean_cpu = sum_cpu / sweep_runs;
+                    double mean_mem = sum_mem / sweep_runs;
 
-                    switch (selected_algo) {
-                        case AlgorithmType::BINARY_SEARCH: binary_search(data, n / 2); break;
-                        case AlgorithmType::LINEAR_SEARCH: linear_search(data, n / 2); break;
-                        case AlgorithmType::MERGE_SORT: { std::vector<int> c = data; merge_sort(c); break; }
-                        case AlgorithmType::INSERTION_SORT: { std::vector<int> c = data; insertion_sort(c); break; }
-                        case AlgorithmType::SELECTION_SORT: { std::vector<int> c = data; selection_sort(c); break; }
-                        case AlgorithmType::BUBBLE_SORT: { std::vector<int> c = data; bubble_sort(c); break; }
-                    }
-
-                    auto d = monitor.end_monitoring();
                     csv_out << std::fixed << std::setprecision(9)
-                            << n << "," << d.execution_time << ","
-                            << d.cpu_time << "," << d.memory_usage << "\n";
+                            << n << "," << mean_t << "," << stddev_t << "," << median_t
+                            << "," << p95_t << "," << mean_cpu << "," << mean_mem;
+                    if (perf.is_available()) {
+                        csv_out << "," << (sum_instructions  / sweep_runs)
+                                << "," << (sum_cache_misses  / sweep_runs)
+                                << "," << (sum_branch_misses / sweep_runs);
+                    }
+                    csv_out << "\n";
                     csv_out.flush();
 
                     if (use_json_output) {
                         emit_json_line("\"type\":\"sweep_point\",\"n\":" + std::to_string(n) +
-                                      ",\"execution_time\":" + std::to_string(d.execution_time) +
-                                      ",\"cpu_time\":" + std::to_string(d.cpu_time) +
-                                      ",\"memory_usage\":" + std::to_string(d.memory_usage));
+                                      ",\"execution_time\":" + std::to_string(mean_t) +
+                                      ",\"mean_time\":"      + std::to_string(mean_t) +
+                                      ",\"stddev_time\":"    + std::to_string(stddev_t) +
+                                      ",\"median_time\":"    + std::to_string(median_t) +
+                                      ",\"p95_time\":"       + std::to_string(p95_t) +
+                                      ",\"cpu_time\":"       + std::to_string(mean_cpu) +
+                                      ",\"memory_usage\":"   + std::to_string(mean_mem));
                     } else {
                         std::cout << "  n=" << std::setw(8) << n
-                                  << "  exec=" << std::scientific << std::setprecision(3) << d.execution_time << "s"
-                                  << "  mem=" << d.memory_usage << "KB" << std::endl;
+                                  << "  mean=" << std::scientific << std::setprecision(3) << mean_t << "s"
+                                  << "  p95=" << p95_t << "s"
+                                  << "  stddev=" << stddev_t << "s"
+                                  << "  mem=" << static_cast<int>(mean_mem) << "KB" << std::endl;
                     }
                 }
                 csv_out.close();
@@ -333,15 +478,21 @@ int main(int argc, char* argv[])
                 // ── Compare all algorithms ────────────────────────────────────
                 std::string compare_csv = "csv/comparison_" + timestamp + ".csv";
                 std::ofstream csv_out(compare_csv);
-                csv_out << "n,binary_search,linear_search,merge_sort,insertion_sort,selection_sort,bubble_sort\n";
+                csv_out << "n,binary_search,linear_search,interpolation_search,"
+                           "merge_sort,quick_sort,heap_sort,shell_sort,"
+                           "insertion_sort,selection_sort,bubble_sort\n";
 
                 const std::vector<std::pair<std::string, AlgorithmType>> all_algos = {
-                    {"binary_search", AlgorithmType::BINARY_SEARCH},
-                    {"linear_search", AlgorithmType::LINEAR_SEARCH},
-                    {"merge_sort",    AlgorithmType::MERGE_SORT},
-                    {"insertion_sort",AlgorithmType::INSERTION_SORT},
-                    {"selection_sort",AlgorithmType::SELECTION_SORT},
-                    {"bubble_sort",   AlgorithmType::BUBBLE_SORT},
+                    {"binary_search",        AlgorithmType::BINARY_SEARCH},
+                    {"linear_search",        AlgorithmType::LINEAR_SEARCH},
+                    {"interpolation_search", AlgorithmType::INTERPOLATION_SEARCH},
+                    {"merge_sort",           AlgorithmType::MERGE_SORT},
+                    {"quick_sort",           AlgorithmType::QUICK_SORT},
+                    {"heap_sort",            AlgorithmType::HEAP_SORT},
+                    {"shell_sort",           AlgorithmType::SHELL_SORT},
+                    {"insertion_sort",       AlgorithmType::INSERTION_SORT},
+                    {"selection_sort",       AlgorithmType::SELECTION_SORT},
+                    {"bubble_sort",          AlgorithmType::BUBBLE_SORT},
                 };
 
                 if (use_json_output) {
@@ -354,27 +505,30 @@ int main(int argc, char* argv[])
                 }
 
                 for (int n : sweep_sizes) {
-                    std::vector<int> sorted_data(n);
-                    std::iota(sorted_data.begin(), sorted_data.end(), 0);
-                    std::vector<int> reverse_data(n);
-                    std::iota(reverse_data.rbegin(), reverse_data.rend(), 0);
+                    std::vector<int> sorted_data  = generate_data(n, DataType::SORTED);
+                    std::vector<int> reverse_data = generate_data(n, DataType::REVERSE);
 
                     csv_out << n;
                     for (auto& [aname, atype] : all_algos) {
-                        bool is_search = (atype == AlgorithmType::BINARY_SEARCH ||
-                                         atype == AlgorithmType::LINEAR_SEARCH);
-                        const std::vector<int>& data = is_search ? sorted_data : reverse_data;
+                        bool a_is_search = (atype == AlgorithmType::BINARY_SEARCH ||
+                                            atype == AlgorithmType::LINEAR_SEARCH  ||
+                                            atype == AlgorithmType::INTERPOLATION_SEARCH);
+                        const std::vector<int>& data = a_is_search ? sorted_data : reverse_data;
 
                         ResourceMonitor monitor;
                         monitor.start_monitoring();
 
                         switch (atype) {
-                            case AlgorithmType::BINARY_SEARCH: binary_search(data, n / 2); break;
-                            case AlgorithmType::LINEAR_SEARCH: linear_search(data, n / 2); break;
-                            case AlgorithmType::MERGE_SORT: { std::vector<int> c = data; merge_sort(c); break; }
-                            case AlgorithmType::INSERTION_SORT: { std::vector<int> c = data; insertion_sort(c); break; }
-                            case AlgorithmType::SELECTION_SORT: { std::vector<int> c = data; selection_sort(c); break; }
-                            case AlgorithmType::BUBBLE_SORT: { std::vector<int> c = data; bubble_sort(c); break; }
+                            case AlgorithmType::BINARY_SEARCH:        binary_search(data, n / 2); break;
+                            case AlgorithmType::LINEAR_SEARCH:        linear_search(data, n / 2); break;
+                            case AlgorithmType::INTERPOLATION_SEARCH: interpolation_search(data, n / 2); break;
+                            case AlgorithmType::MERGE_SORT:    { std::vector<int> c=data; merge_sort(c); break; }
+                            case AlgorithmType::QUICK_SORT:    { std::vector<int> c=data; quick_sort(c); break; }
+                            case AlgorithmType::HEAP_SORT:     { std::vector<int> c=data; heap_sort(c); break; }
+                            case AlgorithmType::SHELL_SORT:    { std::vector<int> c=data; shell_sort(c); break; }
+                            case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=data; insertion_sort(c); break; }
+                            case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=data; selection_sort(c); break; }
+                            case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=data; bubble_sort(c); break; }
                         }
 
                         auto d = monitor.end_monitoring();
@@ -505,7 +659,8 @@ int main(int argc, char* argv[])
             monitor.start_monitoring();
 
             bool is_search_algo = (selected_algo == AlgorithmType::BINARY_SEARCH ||
-                                   selected_algo == AlgorithmType::LINEAR_SEARCH);
+                                   selected_algo == AlgorithmType::LINEAR_SEARCH  ||
+                                   selected_algo == AlgorithmType::INTERPOLATION_SEARCH);
 
             // For streaming, sample metrics during execution
             if (use_stream_output && use_json_output) {
@@ -519,11 +674,12 @@ int main(int argc, char* argv[])
                     // Multi-sample for search algorithms (fast enough to repeat)
                     int final_sample = 3;
                     for (int sample = 0; sample < final_sample; ++sample) {
-                        if (selected_algo == AlgorithmType::BINARY_SEARCH) {
+                        if (selected_algo == AlgorithmType::BINARY_SEARCH)
                             result = binary_search(data, target);
-                        } else {
+                        else if (selected_algo == AlgorithmType::LINEAR_SEARCH)
                             result = linear_search(data, target);
-                        }
+                        else
+                            result = interpolation_search(data, target);
 
                         struct rusage current_usage;
                         getrusage(RUSAGE_SELF, &current_usage);
@@ -542,10 +698,13 @@ int main(int argc, char* argv[])
                 } else {
                     // Single run for sort algorithms; sample metrics after completion
                     switch (selected_algo) {
-                        case AlgorithmType::MERGE_SORT: { std::vector<int> c = data; merge_sort(c); break; }
-                        case AlgorithmType::INSERTION_SORT: { std::vector<int> c = data; insertion_sort(c); break; }
-                        case AlgorithmType::SELECTION_SORT: { std::vector<int> c = data; selection_sort(c); break; }
-                        case AlgorithmType::BUBBLE_SORT: { std::vector<int> c = data; bubble_sort(c); break; }
+                        case AlgorithmType::MERGE_SORT:    { std::vector<int> c=data; merge_sort(c); break; }
+                        case AlgorithmType::QUICK_SORT:    { std::vector<int> c=data; quick_sort(c); break; }
+                        case AlgorithmType::HEAP_SORT:     { std::vector<int> c=data; heap_sort(c); break; }
+                        case AlgorithmType::SHELL_SORT:    { std::vector<int> c=data; shell_sort(c); break; }
+                        case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=data; insertion_sort(c); break; }
+                        case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=data; selection_sort(c); break; }
+                        case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=data; bubble_sort(c); break; }
                         default: break;
                     }
 
@@ -593,31 +752,18 @@ int main(int argc, char* argv[])
 
                 switch (selected_algo) {
                     case AlgorithmType::BINARY_SEARCH:
-                        search_result = binary_search(data, target);
-                        break;
+                        search_result = binary_search(data, target); break;
                     case AlgorithmType::LINEAR_SEARCH:
-                        search_result = linear_search(data, target);
-                        break;
-                    case AlgorithmType::MERGE_SORT: {
-                        std::vector<int> data_copy = data;
-                        merge_sort(data_copy);
-                        break;
-                    }
-                    case AlgorithmType::INSERTION_SORT: {
-                        std::vector<int> data_copy = data;
-                        insertion_sort(data_copy);
-                        break;
-                    }
-                    case AlgorithmType::SELECTION_SORT: {
-                        std::vector<int> data_copy = data;
-                        selection_sort(data_copy);
-                        break;
-                    }
-                    case AlgorithmType::BUBBLE_SORT: {
-                        std::vector<int> data_copy = data;
-                        bubble_sort(data_copy);
-                        break;
-                    }
+                        search_result = linear_search(data, target); break;
+                    case AlgorithmType::INTERPOLATION_SEARCH:
+                        search_result = interpolation_search(data, target); break;
+                    case AlgorithmType::MERGE_SORT:    { std::vector<int> c=data; merge_sort(c); break; }
+                    case AlgorithmType::QUICK_SORT:    { std::vector<int> c=data; quick_sort(c); break; }
+                    case AlgorithmType::HEAP_SORT:     { std::vector<int> c=data; heap_sort(c); break; }
+                    case AlgorithmType::SHELL_SORT:    { std::vector<int> c=data; shell_sort(c); break; }
+                    case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=data; insertion_sort(c); break; }
+                    case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=data; selection_sort(c); break; }
+                    case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=data; bubble_sort(c); break; }
                 }
 
                 auto run_data = monitor.end_monitoring();

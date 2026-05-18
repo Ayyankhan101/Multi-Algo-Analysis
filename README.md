@@ -8,7 +8,11 @@ A comprehensive C++ system for benchmarking, monitoring, and visualizing the tim
 |---|---|---|
 | Binary Search | O(log n) time, O(1) space | Search |
 | Linear Search | O(n) time, O(1) space | Search |
+| Interpolation Search | O(log log n) avg, O(n) worst | Search |
 | Merge Sort | O(n log n) time, O(n) space | Sort |
+| Quick Sort | O(n log n) avg, O(n²) worst | Sort |
+| Heap Sort | O(n log n) time, O(1) space | Sort |
+| Shell Sort | O(n log²n) time, O(1) space | Sort |
 | Insertion Sort | O(n²) time, O(1) space | Sort |
 | Selection Sort | O(n²) time, O(1) space | Sort |
 | Bubble Sort | O(n²) time, O(1) space | Sort |
@@ -68,15 +72,20 @@ cd tui && npm install && npm run build && npm start
 
 ## Features
 
-- **6 Algorithms** — Binary Search, Linear Search, Merge Sort, Insertion Sort, Selection Sort, Bubble Sort
-- **Complexity Sweep** — vary N from 1K to 10M (log-spaced), measure time at each point, generate 4-panel PNG plots proving the complexity class
-- **Compare All** — benchmark all 6 algorithms across the same input sizes in one run; produces a side-by-side comparison plot
-- **Live TUI Dashboard** — streaming execution output, historical browser, settings, export
+- **10 Algorithms** — Binary/Linear/Interpolation Search, Merge/Quick/Heap/Shell/Insertion/Selection/Bubble Sort
+- **Statistical Sweep** — warmup + configurable measurement runs per point; reports mean, stddev, median, p95 per N point
+- **Data Variety** — `--data-type sorted|reverse|random|partial|duplicates` for different input shapes
+- **Hardware Perf Counters** — `perf_event_open` tracking instructions, cache misses, branch mispredictions (Linux)
+- **Compare All** — benchmark all 10 algorithms across the same input sizes; produces a side-by-side comparison plot
+- **Complexity Analysis** — `scripts/analyze_complexity.py` fits a log-log curve to sweep data and reports slope + R²
+- **LaTeX Auto-Generation** — `scripts/generate_report.py` produces a complete complexity report from sweep CSVs
+- **Live TUI Dashboard** — streaming execution, ASCII sparkline during sweep, p95/stddev stats display
 - **Resource Monitoring** — CPU time (`getrusage`), wall-clock time (`high_resolution_clock`), memory (RSS via `/proc/self/statm`)
 - **SQLite Storage** — per-run tables, browseable from the TUI
 - **CSV + PNG Export** — every run writes a CSV; sweep/compare runs produce GNUplot 4-panel PNGs
 - **CPU Core Affinity** — pin execution to a specific core via `--core`
 - **51 Tests** — unit and integration tests with Google Test across 8 suites
+- **Benchmark Regression CI** — GitHub Actions job runs sweeps on each push and uploads results as artifacts
 
 ## Project Structure
 

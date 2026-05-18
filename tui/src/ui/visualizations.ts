@@ -252,9 +252,14 @@ export function showEnhancedResults(
     });
 
     // Summary statistics
-    const avgCpu = results.length > 0 ? results.reduce((sum, r) => sum + r.cpuTime, 0) / results.length : 0;
-    const avgMem = results.length > 0 ? results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length : 0;
+    const avgCpu  = results.length > 0 ? results.reduce((sum, r) => sum + r.cpuTime, 0) / results.length : 0;
+    const avgMem  = results.length > 0 ? results.reduce((sum, r) => sum + r.memoryUsage, 0) / results.length : 0;
     const avgExec = results.length > 0 ? results.reduce((sum, r) => sum + r.execTime, 0) / results.length : 0;
+    const execTimes = results.map(r => r.execTime).sort((a, b) => a - b);
+    const stddevExec = results.length > 1
+      ? Math.sqrt(execTimes.reduce((s, t) => s + (t - avgExec) ** 2, 0) / results.length)
+      : 0;
+    const p95Exec = execTimes.length > 0 ? execTimes[Math.floor(execTimes.length * 0.95)] : 0;
 
     if (results.length === 0) {
       const footer = blessed.box({
@@ -294,9 +299,9 @@ export function showEnhancedResults(
       height: 7,
       content: `{bold}Summary Statistics{/bold}
 
+  Avg Exec Time:  {yellow-fg}${avgExec.toExponential(2)}s{/yellow-fg}   Stddev: {gray-fg}${stddevExec.toExponential(2)}s{/gray-fg}   p95: {red-fg}${p95Exec.toExponential(2)}s{/red-fg}
   Avg CPU Time:   {cyan-fg}${avgCpu.toExponential(2)}s{/cyan-fg}
   Avg Memory:     {green-fg}${avgMem.toFixed(0)}KB{/green-fg}
-  Avg Exec Time:  {yellow-fg}${avgExec.toExponential(2)}s{/yellow-fg}
   Total Runs:     {magenta-fg}${results.length}{/magenta-fg}
   Success Rate:   {blue-fg}${((results.filter(r => r.found).length / results.length) * 100).toFixed(0)}%{/blue-fg}`,
       tags: true,

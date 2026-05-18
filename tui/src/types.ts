@@ -54,6 +54,10 @@ export interface AppSettings {
 export interface SweepPoint {
   n: number;
   execution_time: number;
+  mean_time?: number;
+  stddev_time?: number;
+  median_time?: number;
+  p95_time?: number;
   cpu_time: number;
   memory_usage: number;
 }
