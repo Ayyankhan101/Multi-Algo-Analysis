@@ -4,7 +4,13 @@ Interactive terminal UI for benchmarking and visualising six algorithms with liv
 
 ## Quick Start
 
+The TUI wraps the C++ binary — **build it first** from the project root:
+
 ```bash
+# 1. Build the C++ binary (project root)
+cmake -B build && cmake --build build -j$(nproc)
+
+# 2. Install TUI deps and launch
 cd tui
 npm install
 npm run build

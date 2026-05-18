@@ -222,7 +222,11 @@ sqlite3 database/resource_metrics.db \
 
 ## Troubleshooting
 
-**Binary not found by TUI** — build first: `cmake -B build && cmake --build build`
+**TUI shows "Binary not found" or "Process exited with code 1"** — the C++ binary must be built before starting the TUI. Run from the project root:
+```bash
+cmake -B build && cmake --build build -j$(nproc)
+```
+The TUI resolves the binary at `build/resource_monitor_app` relative to the project root (detected via `CMakeLists.txt`).
 
 **No plots generated** — install gnuplot (`sudo apt-get install gnuplot`), then rebuild (`cmake -B build`) so `HAS_GNUPLOT=1` is set
 

@@ -57,6 +57,7 @@ GTest is **optional** — the main binary builds without it. Tests are compiled 
 
 **Terminal UI (recommended):**
 ```bash
+# The TUI launches the C++ binary — build step above must run first
 cd tui && npm install && npm run build && npm start
 ```
 
