@@ -6,6 +6,19 @@ import { RunResult, ResourceMetric, SweepPoint, SweepOutput, ComparePoint, Compa
 
 const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
 
+function resolveRunCwd(binaryPath: string): string {
+  // Walk up from the binary's directory to find the project root (CMakeLists.txt).
+  // The binary lives in build/ so we need one level up.
+  let dir = path.dirname(binaryPath);
+  for (let i = 0; i < 5; i++) {
+    if (fs.existsSync(path.join(dir, 'CMakeLists.txt'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.dirname(binaryPath);
+}
+
 export interface RunOutput {
   results: RunResult[];
   csvFile: string;
@@ -52,7 +65,7 @@ export function runAlgorithm(
     }
 
     const proc = spawn(binaryPath, args, {
-      cwd: path.dirname(binaryPath),
+      cwd: resolveRunCwd(binaryPath),
     });
 
     // Set timeout
