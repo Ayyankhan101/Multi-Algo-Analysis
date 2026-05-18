@@ -3,17 +3,17 @@ import fs from 'fs';
 import { AppSettings, AlgorithmParams } from './types';
 
 export function resolveProjectRoot(): string {
-  // Walk up from __dirname to find the project root (where package.json exists)
+  // Walk up from __dirname to find the C++ project root (contains CMakeLists.txt)
   let current = __dirname;
   for (let i = 0; i < 10; i++) {
-    if (fs.existsSync(path.join(current, 'package.json'))) {
+    if (fs.existsSync(path.join(current, 'CMakeLists.txt'))) {
       return current;
     }
     const parent = path.dirname(current);
-    if (parent === current) break; // Reached filesystem root
+    if (parent === current) break;
     current = parent;
   }
-  // Fallback: assume __dirname is tui/dist/ or tui/src/
+  // Fallback: tui lives one level below the project root
   return path.resolve(__dirname, '../..');
 }
 
@@ -51,7 +51,7 @@ export function getDefaultSettings(): AppSettings {
     databasePath: path.join(root, 'database', 'resource_metrics.db'),
     csvPath: path.join(root, 'csv'),
     pngPath: path.join(root, 'png'),
-    binaryPath: path.join(root, 'resource_monitor_app'),
+    binaryPath: path.join(root, 'build', 'resource_monitor_app'),
     algorithmParams,
   };
 }
@@ -60,7 +60,7 @@ export function validateEnvironment(settings: AppSettings): string[] {
   const issues: string[] = [];
 
   if (!fs.existsSync(settings.binaryPath)) {
-    issues.push(`Binary not found: ${settings.binaryPath}\n  Run 'make' in the project root first.`);
+    issues.push(`Binary not found: ${settings.binaryPath}\n  Run 'cmake -B build && cmake --build build' in the project root first.`);
   }
 
   if (!fs.existsSync(settings.databasePath)) {
