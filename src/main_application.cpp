@@ -435,13 +435,11 @@ int main(int argc, char* argv[])
 
                     csv_out << std::fixed << std::setprecision(9)
                             << n << "," << mean_t << "," << stddev_t << "," << median_t
-                            << "," << p95_t << "," << mean_cpu << "," << mean_mem;
-                    if (perf.is_available()) {
-                        csv_out << "," << (sum_instructions  / sweep_runs)
-                                << "," << (sum_cache_misses  / sweep_runs)
-                                << "," << (sum_branch_misses / sweep_runs);
-                    }
-                    csv_out << "\n";
+                            << "," << p95_t << "," << mean_cpu << "," << mean_mem
+                            << "," << (perf.is_available() ? sum_instructions  / sweep_runs : 0LL)
+                            << "," << (perf.is_available() ? sum_cache_misses  / sweep_runs : 0LL)
+                            << "," << (perf.is_available() ? sum_branch_misses / sweep_runs : 0LL)
+                            << "\n";
                     csv_out.flush();
 
                     if (use_json_output) {
