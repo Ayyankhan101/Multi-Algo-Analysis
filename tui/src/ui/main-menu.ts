@@ -20,6 +20,8 @@ export function showMainMenu(settings: AppSettings): Promise<number> {
       { label: 'Run Insertion Sort', description: 'Execute O(n^2) simple sorting algorithm' },
       { label: 'Run Selection Sort', description: 'Execute O(n^2) in-place sorting algorithm' },
       { label: 'Run Bubble Sort', description: 'Execute O(n^2) simple comparison sorting' },
+      { label: 'Complexity Sweep', description: 'Vary N and plot time vs input size for one algorithm' },
+      { label: 'Compare All Algorithms', description: 'Benchmark all 6 algorithms across input sizes and compare' },
       { label: 'View Historical Runs', description: 'Browse past execution results' },
       { label: 'View Latest Results', description: 'Show most recent execution data' },
       { label: 'System Info', description: 'Display project and environment info' },

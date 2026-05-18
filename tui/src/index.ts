@@ -11,6 +11,7 @@ import { showSystemInfo } from './ui/system-info';
 import { showLoadingIndeterminate } from './ui/loading';
 import { showEnhancedResults } from './ui/visualizations';
 import { showExportScreen } from './ui/export-screen';
+import { showSweepScreen, showComparisonScreen } from './ui/complexity-sweep';
 import { readCSVFile } from './runner';
 import { DatabaseService } from './database';
 import chalk from 'chalk';
@@ -152,7 +153,32 @@ async function main() {
         await runAlgorithmCase('bubble_sort');
         break;
 
-      case 6: // View Historical Runs
+      case 6: // Complexity Sweep
+        try {
+          const sweepAlgo = await chooseSweepAlgorithm();
+          if (sweepAlgo) {
+            await showSweepScreen(settings.binaryPath, sweepAlgo, {
+              cpuCore: settings.algorithmParams.cpuCore,
+            }, settings.projectRoot);
+          }
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Sweep error: ${err}`));
+          await new Promise<void>(resolve => setTimeout(resolve, 2000));
+        }
+        break;
+
+      case 7: // Compare All Algorithms
+        try {
+          await showComparisonScreen(settings.binaryPath, {
+            cpuCore: settings.algorithmParams.cpuCore,
+          }, settings.projectRoot);
+        } catch (err) {
+          console.error(chalk.red(`\n❌ Comparison error: ${err}`));
+          await new Promise<void>(resolve => setTimeout(resolve, 2000));
+        }
+        break;
+
+      case 8: // View Historical Runs
         if (!db) {
           console.log(chalk.yellow('\n⚠ No database available. Run the algorithm first.'));
           await new Promise<void>(resolve => setTimeout(resolve, 2000));
@@ -161,22 +187,22 @@ async function main() {
         }
         break;
 
-      case 7: // View Latest Results
+      case 9: // View Latest Results
         await showLatestResults(settings.csvPath);
         break;
 
-      case 8: // System Info
+      case 10: // System Info
         await showSystemInfo(settings);
         break;
 
-      case 9: // Settings
+      case 11: // Settings
         settings = await showSettingsScreen(settings);
         saveSettings(settings);
         console.log(chalk.green('\n✓ Settings updated and saved'));
         await new Promise<void>(resolve => setTimeout(resolve, 1000));
         break;
 
-      case 10: // Exit
+      case 12: // Exit
         running = false;
         console.log(chalk.green('\n👋 Goodbye!\n'));
         break;
@@ -191,6 +217,33 @@ async function main() {
   if (db) {
     db.close();
   }
+}
+
+// Prompt user to pick one algorithm for the complexity sweep
+async function chooseSweepAlgorithm(): Promise<string | null> {
+  const algorithms = [
+    'binary_search', 'linear_search', 'merge_sort',
+    'insertion_sort', 'selection_sort', 'bubble_sort',
+  ];
+  return new Promise<string | null>(resolve => {
+    const blessed = require('blessed');
+    const screen = blessed.screen({ smartCSR: true });
+    const list = blessed.list({
+      top: 'center', left: 'center', width: 40, height: algorithms.length + 4,
+      label: ' Choose algorithm ', border: { type: 'line' },
+      keys: true, vi: true, mouse: true, tags: true,
+      style: { selected: { bg: 'blue' }, item: { fg: 'white' }, border: { fg: 'cyan' } },
+      items: algorithms.map(a => ` ${a}`),
+    });
+    screen.append(list);
+    list.on('select', (_item: any, idx: number) => {
+      screen.destroy();
+      resolve(algorithms[idx]);
+    });
+    screen.key(['escape', 'q', 'C-c'], () => { screen.destroy(); resolve(null); });
+    list.focus();
+    screen.render();
+  });
 }
 
 // Save settings to disk

@@ -50,3 +50,28 @@ export interface AppSettings {
   binaryPath: string;
   algorithmParams: AlgorithmParams;
 }
+
+export interface SweepPoint {
+  n: number;
+  execution_time: number;
+  cpu_time: number;
+  memory_usage: number;
+}
+
+export interface SweepOutput {
+  points: SweepPoint[];
+  csvFile: string;
+  pngFile?: string;
+}
+
+export interface ComparePoint {
+  n: number;
+  algorithm: string;
+  execution_time: number;
+}
+
+export interface ComparisonOutput {
+  points: ComparePoint[];
+  csvFile: string;
+  pngFile?: string;
+}

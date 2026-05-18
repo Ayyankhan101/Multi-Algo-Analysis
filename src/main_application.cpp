@@ -1,10 +1,12 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <numeric>
 #include <thread>
 #include <sched.h>
 #include <chrono>
 #include <ctime>
+#include <cmath>
 #include <sstream>
 #include <fstream>
 #include "binary_search_single_core.hpp"
@@ -99,13 +101,20 @@ int main(int argc, char* argv[])
         bool list_algorithms = false;
         bool use_json_output = false;
         bool use_stream_output = false;
-        
+        bool sweep_mode = false;
+        bool compare_mode = false;
+
         // Configurable parameters with defaults
         int data_size = 1000000;
         int data_step = 3;
         int cpu_core = 0;
         int total_runs = 5;
         std::string custom_targets_str = "";
+
+        // Sweep parameters
+        int sweep_min = 1000;
+        int sweep_max = -1; // -1 = auto based on algorithm
+        int sweep_points = 10;
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -155,6 +164,16 @@ int main(int argc, char* argv[])
                 if (i + 1 < argc) {
                     custom_targets_str = argv[++i];
                 }
+            } else if (arg == "--sweep" || arg == "-S") {
+                sweep_mode = true;
+            } else if (arg == "--compare" || arg == "-C") {
+                compare_mode = true;
+            } else if (arg == "--sweep-min") {
+                if (i + 1 < argc) sweep_min = std::stoi(argv[++i]);
+            } else if (arg == "--sweep-max") {
+                if (i + 1 < argc) sweep_max = std::stoi(argv[++i]);
+            } else if (arg == "--sweep-points") {
+                if (i + 1 < argc) sweep_points = std::stoi(argv[++i]);
             }
         }
 
@@ -196,12 +215,202 @@ int main(int argc, char* argv[])
             std::cout << "  --core, -c       CPU core ID to bind (default: 0)" << std::endl;
             std::cout << "  --runs, -r       Number of iterations (default: 5)" << std::endl;
             std::cout << "  --targets, -T    Comma-separated targets (default: 1000,50000,100000,500000,999999)" << std::endl;
+            std::cout << "  --sweep, -S      Sweep input size N from --sweep-min to --sweep-max" << std::endl;
+            std::cout << "  --compare, -C    Run all algorithms across a size sweep and compare" << std::endl;
+            std::cout << "  --sweep-min      Minimum N for sweep (default: 1000)" << std::endl;
+            std::cout << "  --sweep-max      Maximum N for sweep (default: auto)" << std::endl;
+            std::cout << "  --sweep-points   Number of log-spaced data points (default: 10)" << std::endl;
             return 0;
         }
-        
+
         // Set CPU affinity to configured core
         set_cpu_affinity(cpu_core);
-        
+
+        // Generate timestamp for file labeling
+        auto now = std::chrono::system_clock::now();
+        std::time_t time_t_now = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time_t_now), "%Y%m%d_%H%M%S");
+        std::string timestamp = ss.str();
+
+        // ── Complexity sweep mode ─────────────────────────────────────────────
+        if (sweep_mode || compare_mode) {
+            // Auto-determine sweep_max based on algorithm complexity
+            if (sweep_max < 0) {
+                bool is_quadratic = (selected_algo == AlgorithmType::INSERTION_SORT ||
+                                     selected_algo == AlgorithmType::SELECTION_SORT ||
+                                     selected_algo == AlgorithmType::BUBBLE_SORT);
+                sweep_max = compare_mode ? 50000 : (is_quadratic ? 100000 : 1000000);
+            }
+
+            // Generate logarithmically spaced sizes
+            std::vector<int> sweep_sizes;
+            {
+                double log_min = std::log10(static_cast<double>(sweep_min));
+                double log_max = std::log10(static_cast<double>(sweep_max));
+                for (int p = 0; p < sweep_points; ++p) {
+                    double t = sweep_points > 1 ? static_cast<double>(p) / (sweep_points - 1) : 0.0;
+                    int n = static_cast<int>(std::pow(10.0, log_min + (log_max - log_min) * t));
+                    sweep_sizes.push_back(n);
+                }
+            }
+
+            PlotGenerator plotter;
+
+            if (sweep_mode) {
+                // ── Single-algorithm sweep ────────────────────────────────────
+                std::string algo_name = algorithm_to_string(selected_algo);
+                std::string sweep_csv = "csv/" + algo_name + "_sweep_" + timestamp + ".csv";
+                std::ofstream csv_out(sweep_csv);
+                csv_out << "n,execution_time,cpu_time,memory_usage\n";
+
+                if (use_json_output) {
+                    emit_json_line("\"type\":\"sweep_config\",\"algorithm\":\"" + json_escape(algo_name) +
+                                  "\",\"sweep_min\":" + std::to_string(sweep_min) +
+                                  ",\"sweep_max\":" + std::to_string(sweep_max) +
+                                  ",\"sweep_points\":" + std::to_string(sweep_points));
+                } else {
+                    std::cout << "Complexity sweep: " << algo_name
+                              << "  N=" << sweep_min << ".." << sweep_max
+                              << "  points=" << sweep_points << std::endl;
+                }
+
+                bool is_search = (selected_algo == AlgorithmType::BINARY_SEARCH ||
+                                  selected_algo == AlgorithmType::LINEAR_SEARCH);
+
+                for (int n : sweep_sizes) {
+                    // Sorted data for searches; reverse-sorted for sorts (worst case)
+                    std::vector<int> data(n);
+                    if (is_search) {
+                        std::iota(data.begin(), data.end(), 0);
+                    } else {
+                        std::iota(data.rbegin(), data.rend(), 0);
+                    }
+
+                    ResourceMonitor monitor;
+                    monitor.start_monitoring();
+
+                    switch (selected_algo) {
+                        case AlgorithmType::BINARY_SEARCH: binary_search(data, n / 2); break;
+                        case AlgorithmType::LINEAR_SEARCH: linear_search(data, n / 2); break;
+                        case AlgorithmType::MERGE_SORT: { std::vector<int> c = data; merge_sort(c); break; }
+                        case AlgorithmType::INSERTION_SORT: { std::vector<int> c = data; insertion_sort(c); break; }
+                        case AlgorithmType::SELECTION_SORT: { std::vector<int> c = data; selection_sort(c); break; }
+                        case AlgorithmType::BUBBLE_SORT: { std::vector<int> c = data; bubble_sort(c); break; }
+                    }
+
+                    auto d = monitor.end_monitoring();
+                    csv_out << std::fixed << std::setprecision(9)
+                            << n << "," << d.execution_time << ","
+                            << d.cpu_time << "," << d.memory_usage << "\n";
+                    csv_out.flush();
+
+                    if (use_json_output) {
+                        emit_json_line("\"type\":\"sweep_point\",\"n\":" + std::to_string(n) +
+                                      ",\"execution_time\":" + std::to_string(d.execution_time) +
+                                      ",\"cpu_time\":" + std::to_string(d.cpu_time) +
+                                      ",\"memory_usage\":" + std::to_string(d.memory_usage));
+                    } else {
+                        std::cout << "  n=" << std::setw(8) << n
+                                  << "  exec=" << std::scientific << std::setprecision(3) << d.execution_time << "s"
+                                  << "  mem=" << d.memory_usage << "KB" << std::endl;
+                    }
+                }
+                csv_out.close();
+
+                std::string png_prefix = "png/" + algo_name + "_sweep_" + timestamp;
+                plotter.generate_sweep_plot(sweep_csv, png_prefix, algo_name);
+
+                if (use_json_output) {
+                    emit_json_line("\"type\":\"sweep_done\",\"csv\":\"" + json_escape(sweep_csv) +
+                                  "\",\"png\":\"" + json_escape(png_prefix + ".png") + "\"");
+                } else {
+                    std::cout << "\nSweep CSV: " << sweep_csv << std::endl;
+                    std::cout << "Sweep plot: " << png_prefix << ".png" << std::endl;
+                }
+
+            } else {
+                // ── Compare all algorithms ────────────────────────────────────
+                std::string compare_csv = "csv/comparison_" + timestamp + ".csv";
+                std::ofstream csv_out(compare_csv);
+                csv_out << "n,binary_search,linear_search,merge_sort,insertion_sort,selection_sort,bubble_sort\n";
+
+                const std::vector<std::pair<std::string, AlgorithmType>> all_algos = {
+                    {"binary_search", AlgorithmType::BINARY_SEARCH},
+                    {"linear_search", AlgorithmType::LINEAR_SEARCH},
+                    {"merge_sort",    AlgorithmType::MERGE_SORT},
+                    {"insertion_sort",AlgorithmType::INSERTION_SORT},
+                    {"selection_sort",AlgorithmType::SELECTION_SORT},
+                    {"bubble_sort",   AlgorithmType::BUBBLE_SORT},
+                };
+
+                if (use_json_output) {
+                    emit_json_line("\"type\":\"compare_config\",\"sweep_min\":" + std::to_string(sweep_min) +
+                                  ",\"sweep_max\":" + std::to_string(sweep_max) +
+                                  ",\"sweep_points\":" + std::to_string(sweep_points));
+                } else {
+                    std::cout << "Algorithm comparison sweep  N=" << sweep_min
+                              << ".." << sweep_max << "  points=" << sweep_points << std::endl;
+                }
+
+                for (int n : sweep_sizes) {
+                    std::vector<int> sorted_data(n);
+                    std::iota(sorted_data.begin(), sorted_data.end(), 0);
+                    std::vector<int> reverse_data(n);
+                    std::iota(reverse_data.rbegin(), reverse_data.rend(), 0);
+
+                    csv_out << n;
+                    for (auto& [aname, atype] : all_algos) {
+                        bool is_search = (atype == AlgorithmType::BINARY_SEARCH ||
+                                         atype == AlgorithmType::LINEAR_SEARCH);
+                        const std::vector<int>& data = is_search ? sorted_data : reverse_data;
+
+                        ResourceMonitor monitor;
+                        monitor.start_monitoring();
+
+                        switch (atype) {
+                            case AlgorithmType::BINARY_SEARCH: binary_search(data, n / 2); break;
+                            case AlgorithmType::LINEAR_SEARCH: linear_search(data, n / 2); break;
+                            case AlgorithmType::MERGE_SORT: { std::vector<int> c = data; merge_sort(c); break; }
+                            case AlgorithmType::INSERTION_SORT: { std::vector<int> c = data; insertion_sort(c); break; }
+                            case AlgorithmType::SELECTION_SORT: { std::vector<int> c = data; selection_sort(c); break; }
+                            case AlgorithmType::BUBBLE_SORT: { std::vector<int> c = data; bubble_sort(c); break; }
+                        }
+
+                        auto d = monitor.end_monitoring();
+                        csv_out << std::fixed << std::setprecision(9) << "," << d.execution_time;
+
+                        if (use_json_output) {
+                            emit_json_line("\"type\":\"compare_point\",\"n\":" + std::to_string(n) +
+                                          ",\"algorithm\":\"" + aname + "\"" +
+                                          ",\"execution_time\":" + std::to_string(d.execution_time));
+                        }
+                    }
+                    csv_out << "\n";
+                    csv_out.flush();
+
+                    if (!use_json_output) {
+                        std::cout << "  n=" << std::setw(8) << n << " done" << std::endl;
+                    }
+                }
+                csv_out.close();
+
+                std::string png_prefix = "png/comparison_" + timestamp;
+                plotter.generate_comparison_plot(compare_csv, png_prefix);
+
+                if (use_json_output) {
+                    emit_json_line("\"type\":\"compare_done\",\"csv\":\"" + json_escape(compare_csv) +
+                                  "\",\"png\":\"" + json_escape(png_prefix + ".png") + "\"");
+                } else {
+                    std::cout << "\nComparison CSV: " << compare_csv << std::endl;
+                    std::cout << "Comparison plot: " << png_prefix << ".png" << std::endl;
+                }
+            }
+
+            return 0;
+        }
+        // ── End sweep/compare mode ────────────────────────────────────────────
+
         std::string algo_name = algorithm_to_string(selected_algo);
 
         if (use_json_output) {
@@ -210,13 +419,6 @@ int main(int argc, char* argv[])
             std::cout << "Running on CPU core: " << cpu_core << std::endl;
             std::cout << "Selected algorithm: " << algo_name << std::endl;
         }
-
-        // Generate timestamp for file labeling
-        auto now = std::chrono::system_clock::now();
-        std::time_t time_t_now = std::chrono::system_clock::to_time_t(now);
-        std::stringstream ss;
-        ss << std::put_time(std::localtime(&time_t_now), "%Y%m%d_%H%M%S");
-        std::string timestamp = ss.str();
 
         // Initialize monitoring
         ResourceMonitor monitor;

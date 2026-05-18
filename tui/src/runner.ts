@@ -2,7 +2,7 @@ import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
-import { RunResult, ResourceMetric } from './types';
+import { RunResult, ResourceMetric, SweepPoint, SweepOutput, ComparePoint, ComparisonOutput } from './types';
 
 const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
 
@@ -131,6 +131,137 @@ export function runAlgorithm(
       clearTimeout(timeout);
       reject(err);
     });
+  });
+}
+
+export interface SweepParams {
+  sweepMin?: number;
+  sweepMax?: number;
+  sweepPoints?: number;
+  cpuCore?: number;
+}
+
+const SWEEP_TIMEOUT_MS = 300000; // 5 minutes — quadratic sorts are slow
+
+export function runSweep(
+  binaryPath: string,
+  algorithmName: string,
+  params: SweepParams = {},
+  onPoint?: (point: SweepPoint) => void
+): Promise<SweepOutput> {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(binaryPath)) {
+      reject(new Error(`Binary not found: ${binaryPath}`));
+      return;
+    }
+
+    const args: string[] = ['--algorithm', algorithmName, '--sweep', '--json'];
+    if (params.sweepMin) args.push('--sweep-min', String(params.sweepMin));
+    if (params.sweepMax) args.push('--sweep-max', String(params.sweepMax));
+    if (params.sweepPoints) args.push('--sweep-points', String(params.sweepPoints));
+    if (params.cpuCore !== undefined) args.push('--core', String(params.cpuCore));
+
+    const points: SweepPoint[] = [];
+    let csvFile = '';
+    let pngFile: string | undefined;
+
+    const proc = spawn(binaryPath, args, { cwd: path.dirname(binaryPath) });
+
+    const timeout = setTimeout(() => {
+      proc.kill('SIGTERM');
+      reject(new Error(`Sweep timed out after ${SWEEP_TIMEOUT_MS / 1000}s`));
+    }, SWEEP_TIMEOUT_MS);
+
+    proc.stdout.on('data', (data: Buffer) => {
+      for (const line of data.toString().split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed.type === 'sweep_point') {
+            const pt: SweepPoint = {
+              n: parsed.n,
+              execution_time: parsed.execution_time,
+              cpu_time: parsed.cpu_time,
+              memory_usage: parsed.memory_usage,
+            };
+            points.push(pt);
+            if (onPoint) onPoint(pt);
+          } else if (parsed.type === 'sweep_done') {
+            if (parsed.csv) csvFile = parsed.csv;
+            if (parsed.png) pngFile = parsed.png;
+          }
+        } catch { /* ignore non-JSON */ }
+      }
+    });
+
+    proc.on('close', (code) => {
+      clearTimeout(timeout);
+      if (code === 0) resolve({ points, csvFile, pngFile });
+      else reject(new Error(`Sweep process exited with code ${code}`));
+    });
+
+    proc.on('error', (err) => { clearTimeout(timeout); reject(err); });
+  });
+}
+
+export function runComparison(
+  binaryPath: string,
+  params: SweepParams = {},
+  onPoint?: (point: ComparePoint) => void
+): Promise<ComparisonOutput> {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(binaryPath)) {
+      reject(new Error(`Binary not found: ${binaryPath}`));
+      return;
+    }
+
+    const args: string[] = ['--compare', '--json'];
+    if (params.sweepMin) args.push('--sweep-min', String(params.sweepMin));
+    if (params.sweepMax) args.push('--sweep-max', String(params.sweepMax));
+    if (params.sweepPoints) args.push('--sweep-points', String(params.sweepPoints));
+    if (params.cpuCore !== undefined) args.push('--core', String(params.cpuCore));
+
+    const points: ComparePoint[] = [];
+    let csvFile = '';
+    let pngFile: string | undefined;
+
+    const proc = spawn(binaryPath, args, { cwd: path.dirname(binaryPath) });
+
+    const timeout = setTimeout(() => {
+      proc.kill('SIGTERM');
+      reject(new Error(`Comparison timed out after ${SWEEP_TIMEOUT_MS / 1000}s`));
+    }, SWEEP_TIMEOUT_MS);
+
+    proc.stdout.on('data', (data: Buffer) => {
+      for (const line of data.toString().split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed.type === 'compare_point') {
+            const pt: ComparePoint = {
+              n: parsed.n,
+              algorithm: parsed.algorithm,
+              execution_time: parsed.execution_time,
+            };
+            points.push(pt);
+            if (onPoint) onPoint(pt);
+          } else if (parsed.type === 'compare_done') {
+            if (parsed.csv) csvFile = parsed.csv;
+            if (parsed.png) pngFile = parsed.png;
+          }
+        } catch { /* ignore non-JSON */ }
+      }
+    });
+
+    proc.on('close', (code) => {
+      clearTimeout(timeout);
+      if (code === 0) resolve({ points, csvFile, pngFile });
+      else reject(new Error(`Comparison process exited with code ${code}`));
+    });
+
+    proc.on('error', (err) => { clearTimeout(timeout); reject(err); });
   });
 }
 
