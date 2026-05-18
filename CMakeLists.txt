@@ -24,11 +24,11 @@ if (NOT GNUPLOT_EXECUTABLE)
     message(WARNING "GNUplot not found. Plotting features will be disabled.")
 endif()
 
-# Google Test
+# Google Test (optional — test targets are skipped if not found)
 enable_testing()
-find_package(GTest REQUIRED)
-if (NOT GTEST_FOUND)
-    message(FATAL_ERROR "Google Test not found. Please install Google Test (e.g., sudo apt-get install libgtest-dev).")
+find_package(GTest QUIET)
+if (NOT GTest_FOUND)
+    message(WARNING "Google Test not found — test targets will be skipped. Install with: sudo apt-get install libgtest-dev")
 endif()
 
 # --- Libraries ---
@@ -95,116 +95,50 @@ target_link_libraries(resource_monitor_app
     Threads::Threads
 )
 
-# --- Tests ---
-# Resource Monitor Tests
-add_executable(resource_monitor_tests
-    tests/test_resource_monitor.cpp
-)
-target_include_directories(resource_monitor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(resource_monitor_tests
-    PRIVATE
-    resource_monitor
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME resource_monitor_tests COMMAND resource_monitor_tests)
+# --- Tests (only built when GTest is available) ---
+if (GTest_FOUND)
+    add_executable(resource_monitor_tests tests/test_resource_monitor.cpp)
+    target_include_directories(resource_monitor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(resource_monitor_tests PRIVATE resource_monitor GTest::GTest GTest::Main)
+    add_test(NAME resource_monitor_tests COMMAND resource_monitor_tests)
 
-# Database Manager Tests
-add_executable(database_manager_tests
-    tests/test_database_manager.cpp
-)
-target_include_directories(database_manager_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(database_manager_tests
-    PRIVATE
-    database_manager
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME database_manager_tests COMMAND database_manager_tests)
+    add_executable(database_manager_tests tests/test_database_manager.cpp)
+    target_include_directories(database_manager_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(database_manager_tests PRIVATE database_manager GTest::GTest GTest::Main)
+    add_test(NAME database_manager_tests COMMAND database_manager_tests)
 
-# Plot Generator Tests
-add_executable(plot_generator_tests
-    tests/test_plot_generator.cpp
-)
-target_include_directories(plot_generator_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(plot_generator_tests
-    PRIVATE
-    plot_generator
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME plot_generator_tests COMMAND plot_generator_tests)
+    add_executable(plot_generator_tests tests/test_plot_generator.cpp)
+    target_include_directories(plot_generator_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(plot_generator_tests PRIVATE plot_generator GTest::GTest GTest::Main)
+    add_test(NAME plot_generator_tests COMMAND plot_generator_tests)
 
-# Binary Search Tests
-add_executable(binary_search_tests
-    tests/test_binary_search.cpp
-)
-target_include_directories(binary_search_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(binary_search_tests
-    PRIVATE
-    binary_search
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME binary_search_tests COMMAND binary_search_tests)
+    add_executable(binary_search_tests tests/test_binary_search.cpp)
+    target_include_directories(binary_search_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(binary_search_tests PRIVATE binary_search GTest::GTest GTest::Main)
+    add_test(NAME binary_search_tests COMMAND binary_search_tests)
 
-# Linear Search Tests
-add_executable(linear_search_tests
-    tests/test_linear_search.cpp
-)
-target_include_directories(linear_search_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(linear_search_tests
-    PRIVATE
-    linear_search
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME linear_search_tests COMMAND linear_search_tests)
+    add_executable(linear_search_tests tests/test_linear_search.cpp)
+    target_include_directories(linear_search_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(linear_search_tests PRIVATE linear_search GTest::GTest GTest::Main)
+    add_test(NAME linear_search_tests COMMAND linear_search_tests)
 
-# Merge Sort Tests
-add_executable(merge_sort_tests
-    tests/test_merge_sort.cpp
-)
-target_include_directories(merge_sort_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(merge_sort_tests
-    PRIVATE
-    merge_sort
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME merge_sort_tests COMMAND merge_sort_tests)
+    add_executable(merge_sort_tests tests/test_merge_sort.cpp)
+    target_include_directories(merge_sort_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(merge_sort_tests PRIVATE merge_sort GTest::GTest GTest::Main)
+    add_test(NAME merge_sort_tests COMMAND merge_sort_tests)
 
-# Sorting Algorithms Tests
-add_executable(sorting_algorithms_tests
-    tests/test_sorting_algorithms.cpp
-)
-target_include_directories(sorting_algorithms_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(sorting_algorithms_tests
-    PRIVATE
-    insertion_sort
-    selection_sort
-    bubble_sort
-    merge_sort
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME sorting_algorithms_tests COMMAND sorting_algorithms_tests)
+    add_executable(sorting_algorithms_tests tests/test_sorting_algorithms.cpp)
+    target_include_directories(sorting_algorithms_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(sorting_algorithms_tests
+        PRIVATE insertion_sort selection_sort bubble_sort merge_sort GTest::GTest GTest::Main)
+    add_test(NAME sorting_algorithms_tests COMMAND sorting_algorithms_tests)
 
-# Integration Tests
-add_executable(integration_tests
-    tests/test_integration.cpp
-)
-target_include_directories(integration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-target_link_libraries(integration_tests
-    PRIVATE
-    resource_monitor
-    database_manager
-    plot_generator
-    binary_search
-    GTest::GTest
-    GTest::Main
-)
-add_test(NAME integration_tests COMMAND integration_tests)
+    add_executable(integration_tests tests/test_integration.cpp)
+    target_include_directories(integration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
+    target_link_libraries(integration_tests
+        PRIVATE resource_monitor database_manager plot_generator binary_search GTest::GTest GTest::Main)
+    add_test(NAME integration_tests COMMAND integration_tests)
+endif()
 
 # --- Installation ---
 # Install libraries
