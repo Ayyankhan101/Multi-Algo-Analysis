@@ -22,13 +22,19 @@ export class DatabaseService {
   }
 
   getHistoricalRuns(): HistoricalRun[] {
-    const tables = this.getTableNames();
+    const algoPrefix = /^(binary_search|linear_search|interpolation_search|merge_sort|insertion_sort|selection_sort|bubble_sort|quick_sort|heap_sort|shell_sort)_/;
+    const tables = this.getTableNames()
+      .sort((a, b) => {
+        const tsA = a.replace(algoPrefix, '');
+        const tsB = b.replace(algoPrefix, '');
+        return tsB.localeCompare(tsA); // newest first
+      });
     return tables.map(tableName => {
       const count = this.db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as { count: number };
       // Extract timestamp from table name (e.g., "binary_search_20260414_060305" -> "20260414_060305")
-      const timestamp = tableName.replace(/^(binary_search|linear_search|merge_sort|insertion_sort|selection_sort|bubble_sort)_/, '');
+      const timestamp = tableName.replace(algoPrefix, '');
       // Extract algorithm name from table name
-      const algoName = tableName.match(/^(binary_search|linear_search|merge_sort|insertion_sort|selection_sort|bubble_sort)_/)?.[1] ?? 'unknown';
+      const algoName = tableName.match(algoPrefix)?.[1] ?? 'unknown';
       return {
         timestamp: this.formatTimestamp(timestamp),
         tableName,
