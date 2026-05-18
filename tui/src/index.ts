@@ -182,12 +182,16 @@ async function main() {
         await showSystemInfo(settings);
         break;
 
-      case 15: // Settings
-        settings = await showSettingsScreen(settings);
-        saveSettings(settings);
-        console.log(chalk.green('\n✓ Settings updated and saved'));
-        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+      case 15: { // Settings
+        const updated = await showSettingsScreen(settings);
+        if (updated !== null) {
+          settings = updated;
+          saveSettings(settings);
+          console.log(chalk.green('\n✓ Settings saved'));
+          await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        }
         break;
+      }
 
       case 16: // Exit
         running = false;
