@@ -1,10 +1,21 @@
 # Multi-Algo-Analysis
 
-A comprehensive C++ system for monitoring, storing, and visualizing resource usage of multiple algorithms (Binary Search, Linear Search, Merge Sort) with an interactive TUI dashboard and complete test suite.
+A comprehensive C++ system for benchmarking, monitoring, and visualizing the time and space complexity of six algorithms — with an interactive TUI dashboard, complexity sweep plots, and a complete test suite.
+
+## Algorithms
+
+| Algorithm | Complexity | Type |
+|---|---|---|
+| Binary Search | O(log n) time, O(1) space | Search |
+| Linear Search | O(n) time, O(1) space | Search |
+| Merge Sort | O(n log n) time, O(n) space | Sort |
+| Insertion Sort | O(n²) time, O(1) space | Sort |
+| Selection Sort | O(n²) time, O(1) space | Sort |
+| Bubble Sort | O(n²) time, O(1) space | Sort |
 
 ## Quick Start
 
-### Option 1: Docker (Easiest - Recommended for new users)
+### Option 1: Docker (Recommended for new users)
 
 ```bash
 # Run TUI Dashboard
@@ -17,156 +28,203 @@ docker compose --profile cli run multi-algo-binary
 docker compose --profile dev up
 ```
 
-See [docs/DOCKER.md](docs/DOCKER.md) for complete Docker deployment guide.
+See [docs/DOCKER.md](docs/DOCKER.md) for the complete Docker guide.
 
 ### Option 2: Native Installation
 
-#### 1. Install Dependencies & Build
-
-Run the automated setup script:
+#### 1. Install Dependencies
 
 ```bash
-chmod +x scripts/setup.sh
-sudo ./scripts/setup.sh
+sudo apt-get install build-essential cmake libsqlite3-dev gnuplot nodejs npm
+# Optional (for tests):
+sudo apt-get install libgtest-dev
 ```
 
-**Or** install dependencies manually (see [docs/README.md](docs/README.md) for your distribution).
-
-#### 2. Run the Application
-
-**Option A: Terminal UI (Recommended)**
+Or use the automated setup script:
 ```bash
-cd tui && npm start
+chmod +x scripts/setup.sh && sudo ./scripts/setup.sh
 ```
 
-**Option B: Command Line**
+#### 2. Build
+
 ```bash
-make && make run
-# Or with algorithm selection:
-./resource_monitor_app --algorithm binary_search
-./resource_monitor_app --algorithm linear_search
-./resource_monitor_app --algorithm merge_sort
+cmake -B build && cmake --build build -j$(nproc)
 ```
 
-### 3. View Results
+GTest is **optional** — the main binary builds without it. Tests are compiled only when GTest is found.
 
-- **TUI Dashboard**: Interactive menus, live metrics, historical browser
-- **Database**: `database/resource_metrics.db`
-- **CSV Export**: `csv/<algorithm>_*.csv`
-- **Plots**: `png/*.png` (requires gnuplot)
+#### 3. Run
+
+**Terminal UI (recommended):**
+```bash
+cd tui && npm install && npm run build && npm start
+```
+
+**Command line:**
+```bash
+./build/resource_monitor_app --algorithm binary_search
+```
 
 ## Features
 
-- **Interactive TUI Dashboard** - Terminal-based UI with menus, tables, and charts
-- **Multiple Algorithms** - Binary Search, Linear Search, Merge Sort (extensible)
-- **CLI Algorithm Selection** - Choose algorithm via `--algorithm` flag
-- **CPU Core Affinity** - Pin execution to a specific core
-- **Resource Monitoring** - Track CPU time, memory usage, and execution time
-- **Database Storage** - Persistent metrics in SQLite with per-run tables
-- **Data Export** - CSV output for analysis
-- **Visualization** - PNG plots via GNUplot + ASCII charts in TUI
-- **Complete Test Suite** - 21 unit/integration tests with Google Test
+- **6 Algorithms** — Binary Search, Linear Search, Merge Sort, Insertion Sort, Selection Sort, Bubble Sort
+- **Complexity Sweep** — vary N from 1K to 10M (log-spaced), measure time at each point, generate 4-panel PNG plots proving the complexity class
+- **Compare All** — benchmark all 6 algorithms across the same input sizes in one run; produces a side-by-side comparison plot
+- **Live TUI Dashboard** — streaming execution output, historical browser, settings, export
+- **Resource Monitoring** — CPU time (`getrusage`), wall-clock time (`high_resolution_clock`), memory (RSS via `/proc/self/statm`)
+- **SQLite Storage** — per-run tables, browseable from the TUI
+- **CSV + PNG Export** — every run writes a CSV; sweep/compare runs produce GNUplot 4-panel PNGs
+- **CPU Core Affinity** — pin execution to a specific core via `--core`
+- **51 Tests** — unit and integration tests with Google Test across 8 suites
 
 ## Project Structure
 
 ```
-├── scripts/
-│   └── setup.sh          # Automated dependency installer
-├── tui/                  # Terminal UI application
-│   ├── src/              # TypeScript source files
-│   │   ├── index.ts      # Main entry point
-│   │   ├── types.ts      # Type definitions
-│   │   ├── settings.ts   # Configuration
-│   │   ├── database.ts   # SQLite service
-│   │   ├── runner.ts     # C++ binary executor
-│   │   └── ui/           # TUI screens
-│   └── README.md         # TUI documentation
 ├── src/
-│   └── main_application.cpp
+│   └── main_application.cpp   # CLI entry point, all algorithm dispatch
 ├── hpp/
 │   ├── resource_monitor.hpp
 │   ├── database_manager.hpp
-│   ├── plot_generator.hpp
+│   ├── plot_generator.hpp          # sweep + comparison plot generators
 │   ├── binary_search_single_core.hpp
 │   ├── linear_search.hpp
-│   └── merge_sort.hpp
-├── tests/                 # Unit and integration tests (21 tests total)
+│   ├── merge_sort.hpp
+│   ├── insertion_sort.hpp
+│   ├── selection_sort.hpp
+│   └── bubble_sort.hpp
+├── tests/
 │   ├── test_resource_monitor.cpp
 │   ├── test_database_manager.cpp
 │   ├── test_plot_generator.cpp
 │   ├── test_binary_search.cpp
+│   ├── test_linear_search.cpp
+│   ├── test_merge_sort.cpp
+│   ├── test_sorting_algorithms.cpp
 │   └── test_integration.cpp
+├── tui/                            # TypeScript terminal UI
+│   ├── src/
+│   │   ├── index.ts
+│   │   ├── runner.ts               # binary executor + sweep/compare runners
+│   │   ├── types.ts
+│   │   ├── settings.ts
+│   │   ├── database.ts
+│   │   └── ui/
+│   │       ├── main-menu.ts
+│   │       ├── complexity-sweep.ts # sweep + comparison screens
+│   │       ├── live-execution.ts
+│   │       ├── execution-screen.ts
+│   │       ├── visualizations.ts
+│   │       ├── export-screen.ts
+│   │       ├── historical-runs.ts
+│   │       ├── latest-results.ts
+│   │       ├── settings-screen.ts
+│   │       ├── system-info.ts
+│   │       └── loading.ts
+│   └── README.md
+├── .github/workflows/ci.yml       # Multi-compiler CI, coverage, security scan
+├── .clang-format
 ├── docs/
-│   ├── README.md          # Full documentation
-│   └── instructions.md    # Developer guide
-├── database/              # SQLite database output
-├── csv/                   # CSV data exports
-├── png/                   # Plot images
-├── build/                 # CMake build artifacts
+│   ├── README.md
+│   └── DOCKER.md
+├── database/                      # SQLite output
+├── csv/                           # CSV exports
+├── png/                           # PNG plots
 ├── CMakeLists.txt
 └── Makefile
 ```
 
-## Build Systems
+## CLI Reference
 
-### GNU Make (Simple)
-```bash
-make clean && make && make run
+```
+./build/resource_monitor_app [OPTIONS]
+
+Algorithm selection:
+  --algorithm, -a <name>   binary_search | linear_search | merge_sort |
+                           insertion_sort | selection_sort | bubble_sort
+  --list, -l               List algorithms with complexity info
+
+Run parameters:
+  --data-size <n>          Array size (default: 1 000 000)
+  --data-step <s>          Step between elements (default: 2)
+  --runs <n>               Number of runs (default: 5)
+  --core <id>              CPU core to pin execution to (default: 0)
+  --targets <a,b,c>        Custom search targets (searches only)
+  --json                   Stream results as JSON lines (used by TUI)
+
+Complexity sweep (single algorithm):
+  --sweep, -S              Enable sweep mode
+  --sweep-min <n>          Minimum N (default: 1 000)
+  --sweep-max <n>          Maximum N (auto: 10M for O(log n)/O(n log n), 100K for O(n²))
+  --sweep-points <n>       Number of log-spaced points (default: 10)
+
+Comparison sweep (all 6 algorithms):
+  --compare, -C            Run all algorithms across the same sweep range
 ```
 
-### CMake (Advanced - includes tests)
-```bash
-mkdir -p build && cd build
-cmake .. && make
-ctest  # Run tests
-```
+## TUI Dashboard
 
-### TUI (Terminal UI)
-```bash
-cd tui
-npm install      # Install dependencies (first time only)
-npm run build    # Compile TypeScript
-npm start        # Launch TUI dashboard
-```
+13-item main menu:
 
-## TUI Dashboard Features
+| # | Option | Description |
+|---|---|---|
+| 1–6 | Run [Algorithm] | Live execution with streaming metrics |
+| 7 | Complexity Sweep | Pick one algorithm, vary N, plot time vs N |
+| 8 | Compare All Algorithms | All 6 benchmarked side-by-side |
+| 9 | View Historical Runs | Browse SQLite DB of past runs |
+| 10 | View Latest Results | Most recent CSV with ASCII charts |
+| 11 | System Info | Environment and project details |
+| 12 | Settings | Configure sizes, targets, core affinity |
+| 13 | Exit | |
 
-- **Run Algorithms** - Execute binary search, linear search, or merge sort with live resource monitoring
-- **Historical Browser** - Browse past executions from SQLite database with stats and comparisons
-- **Latest Results** - View most recent run with ASCII charts and detailed metrics
-- **System Info** - Environment and project structure details
-- **Keyboard Navigation** - Intuitive controls (↑/↓, j/k, Enter, q)
+## Complexity Plots
 
-See [tui/README.md](tui/README.md) for full TUI documentation.
+Sweep mode generates a **4-panel PNG** for each algorithm:
+
+- **Execution Time vs N** (log x-axis) — raw measured time
+- **Normalized: Time / O(f(n))** — should be flat if complexity class is correct
+- **Log-Log Plot** — slope of the line reveals the exponent (slope ≈ 1 → linear, ≈ 2 → quadratic)
+- **Memory vs N** — RSS memory growth (O(1) for in-place sorts, O(n) for merge sort)
+
+Compare mode generates a **4-panel comparison PNG**:
+- All algorithms on log-log axes
+- Search algorithms only
+- Sort algorithms only
+- Linear scale (makes the quadratic explosion visible)
 
 ## Testing
 
-The project includes a comprehensive test suite with **21 tests** across 5 test suites:
-
 ```bash
-# Build with CMake and run tests
-mkdir -p build && cd build
-cmake .. && make
-ctest --verbose
+# Build (GTest optional — tests only compiled when found)
+cmake -B build && cmake --build build -j$(nproc)
 
-# Test breakdown:
-# - Resource Monitor Tests:  3 tests (start/stop, data points, CSV export)
-# - Database Manager Tests:  3 tests (init, insert/query, table management)
-# - Plot Generator Tests:    4 tests (valid data, empty data, file I/O, CSV conversion)
-# - Binary Search Tests:     6 tests (find existing, not found, edge cases, large arrays)
-# - Integration Tests:       5 tests (full pipeline: monitor + DB + CSV + plots)
+# Run all tests
+cd build && ctest --verbose
 ```
 
-All tests use **Google Test** framework and automatically clean up temporary files.
+**51 tests across 8 suites:**
 
-## Full Documentation
+| Suite | Tests |
+|---|---|
+| Resource Monitor | 3 |
+| Database Manager | 3 |
+| Plot Generator | 4 |
+| Binary Search | 6 |
+| Linear Search | 9 |
+| Merge Sort | 10 |
+| Sorting Algorithms (insertion/selection/bubble) | 30 |
+| Integration | 5 |
 
-See [docs/README.md](docs/README.md) for detailed information about:
-- System architecture
-- Component breakdown
-- Customization options
-- Database operations
-- Troubleshooting
+## CI/CD
+
+GitHub Actions runs on every push to `main`, `version-3`, `develop`:
+
+- Multi-compiler matrix (GCC + Clang)
+- Full test suite with lcov coverage report
+- clang-format + cppcheck static analysis
+- TypeScript build
+- Docker image builds
+- Trivy security scan → GitHub Security tab (SARIF)
+- Release notes on tags
 
 ## License
 

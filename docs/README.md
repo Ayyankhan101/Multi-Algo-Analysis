@@ -1,500 +1,237 @@
 # C++ Resource Monitoring System for Algorithm Analysis
 
-This is a comprehensive system that monitors, stores, and visualizes resource usage of multiple algorithms (Binary Search, Linear Search, Merge Sort) running on a specific CPU core.
+Comprehensive system that benchmarks, monitors, and visualises resource usage for six algorithms running on a specific CPU core.
 
 ## Quick Start
 
-### Automatic Setup (Recommended)
-
-Run the setup script to install all dependencies and build the project automatically:
+### Automatic Setup
 
 ```bash
 chmod +x scripts/setup.sh
 sudo ./scripts/setup.sh
 ```
 
-The script will:
-- Detect your Linux distribution
-- Install all required dependencies (including Node.js for TUI)
-- Create necessary directories
-- Verify installations
-- Optionally build the project (C++ binary + TUI)
-
 ### Manual Installation
 
-If you prefer to install dependencies manually, use the commands below for your distribution.
+**Ubuntu / Debian / Kali:**
+```bash
+sudo apt-get install build-essential cmake libsqlite3-dev gnuplot nodejs npm
+sudo apt-get install libgtest-dev   # optional — only needed for tests
+```
 
-## Terminal UI (TUI) Dashboard
+**Fedora / RHEL:**
+```bash
+sudo dnf install gcc-c++ cmake make sqlite-devel gnuplot nodejs npm
+sudo dnf install gtest-devel        # optional
+```
 
-The project includes an interactive terminal UI for easier navigation and data visualization.
+**Arch Linux:**
+```bash
+sudo pacman -S base-devel cmake sqlite gnuplot nodejs npm
+sudo pacman -S gtest               # optional
+```
 
-### Quick Start
+### Dependency Table
+
+| Dependency | Purpose | Required? |
+|---|---|---|
+| g++ / clang++ (C++17) | Compiler | Yes |
+| CMake ≥ 3.10 | Build system | Yes |
+| libsqlite3-dev | Database | Yes |
+| gnuplot | Complexity plots (PNG) | Optional |
+| libgtest-dev | Test suite | Optional |
+| Node.js + npm | TUI | Optional |
+
+## Building
+
+### CMake (recommended)
+
+```bash
+cmake -B build && cmake --build build -j$(nproc)
+```
+
+GTest is found automatically. If not installed, the main binary still builds and tests are silently skipped.
+
+### GNU Make
+
+```bash
+make && make run
+```
+
+### TUI
 
 ```bash
 cd tui
+npm install      # first time only
+npm run build
 npm start
 ```
 
-### TUI Features
+## Algorithms
 
-- **Main Menu** - Navigate between different views
-- **Run Algorithms** - Execute binary search, linear search, or merge sort with live metrics
-- **Historical Runs** - Browse past executions from SQLite database with stats
-- **Latest Results** - View most recent CSV with stats and ASCII charts
-- **System Info** - Display project structure and environment details
+| Algorithm | Flag | Complexity | Worst-case data |
+|---|---|---|---|
+| Binary Search | `binary_search` | O(log n) time, O(1) space | sorted array |
+| Linear Search | `linear_search` | O(n) time, O(1) space | sorted array (target at end) |
+| Merge Sort | `merge_sort` | O(n log n) time, O(n) space | any |
+| Insertion Sort | `insertion_sort` | O(n²) time, O(1) space | reverse-sorted |
+| Selection Sort | `selection_sort` | O(n²) time, O(1) space | reverse-sorted |
+| Bubble Sort | `bubble_sort` | O(n²) time, O(1) space | reverse-sorted |
 
-### Keyboard Controls
+## CLI Reference
 
-- **↑/↓** or **j/k** - Navigate menus
-- **Enter** or **1-5** - Select option
-- **q** or **Escape** - Go back / Exit
+```
+./build/resource_monitor_app [OPTIONS]
 
-### Development
+Algorithm selection:
+  --algorithm, -a <name>   Select algorithm (see table above)
+  --list, -l               List all algorithms with complexity info
 
-```bash
-cd tui
-npm run build    # Compile TypeScript
-npm run dev      # Run with ts-node (no build needed)
-npm run watch    # Auto-rebuild on changes
+Run parameters:
+  --data-size <n>          Array size (default: 1 000 000)
+  --data-step <s>          Step between generated elements (default: 2)
+  --runs <n>               Runs per invocation (default: 5)
+  --core <id>              CPU core affinity (default: 0)
+  --targets <a,b,...>      Custom search targets, comma-separated
+  --json                   Stream results as JSON lines (TUI protocol)
+
+Complexity sweep — single algorithm:
+  --sweep, -S              Enable sweep mode
+  --sweep-min <n>          Minimum N (default: 1 000)
+  --sweep-max <n>          Maximum N (auto-selected if omitted)
+  --sweep-points <k>       Number of log-spaced points (default: 10)
+
+Comparison sweep — all 6 algorithms:
+  --compare, -C            Run all algorithms across the same sweep range
 ```
 
-See [tui/README.md](../tui/README.md) for full TUI documentation.
+### Examples
 
-## Features
+```bash
+# Run binary search, 10 times, array of 2 million
+./build/resource_monitor_app --algorithm binary_search --runs 10 --data-size 2000000
 
-- **Multiple Algorithm Support**: Binary Search, Linear Search, Merge Sort (extensible architecture)
-- **CPU Core Affinity**: Runs on a specific CPU core (core 0 by default)
-- **Resource Monitoring**: Tracks CPU time, memory usage, and execution time
-- **Database Storage**: Stores metrics in SQLite database with per-run tables
-- **Data Export**: Exports data to CSV format
-- **Visualization**: Generates plots using GNUplot
-- **Structured Design**: Modular architecture with clear separation of concerns
-- **Complete Test Suite**: 21 unit/integration tests using Google Test
-- **CLI Algorithm Selection**: Choose algorithm via `--algorithm` or `-a` flag
+# Complexity sweep: binary search, 20 points, N = 1K to 10M
+./build/resource_monitor_app --algorithm binary_search --sweep --sweep-points 20 --sweep-max 10000000
+
+# Compare all 6 algorithms across N = 1K to 50K
+./build/resource_monitor_app --compare --sweep-min 1000 --sweep-max 50000 --sweep-points 12
+
+# Pin to core 2
+./build/resource_monitor_app --algorithm merge_sort --core 2
+```
 
 ## System Architecture
 
 ```
-┌───────────────────────────────────────────────────────┐
-│                 Main Application                        │
-└───────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  ResourceMonitor │    │  DatabaseManager│    │  PlotGenerator  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-       │                         │                         │
-       ▼                         ▼                         ▼
-┌─────────────┐          ┌─────────────┐          ┌─────────────┐
-│  CSV Files  │          │ SQLite DB   │          │  PNG Plots  │
-└─────────────┘          └─────────────┘          └─────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     main_application.cpp                      │
+│  CLI parsing → algorithm dispatch → sweep / compare loops    │
+└──────────────────────────────────────────────────────────────┘
+          │                    │                    │
+          ▼                    ▼                    ▼
+┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+│  ResourceMonitor  │ │  DatabaseManager  │ │  PlotGenerator   │
+│  (cpu/mem/time)   │ │  (SQLite)         │ │  (GNUplot PNG)   │
+└──────────────────┘ └──────────────────┘ └──────────────────┘
+          │                    │                    │
+          ▼                    ▼                    ▼
+     csv/*.csv          database/*.db          png/*.png
 ```
 
-## Components
+### ResourceMonitor
+- Wraps each algorithm execution
+- Collects: CPU time (`getrusage` RUSAGE_SELF), wall-clock time (`high_resolution_clock`), RSS memory (`/proc/self/statm`)
+- Writes per-run CSV files
 
-### 1. ResourceMonitor
-- **Purpose**: Monitors system resources during binary search execution
-- **Metrics Collected**:
-  - CPU time (user time)
-  - Memory usage (maximum resident set size)
-  - Execution time (wall-clock time)
-  - Timestamps
-- **Features**:
-  - Start/stop monitoring
-  - Data collection and storage
-  - CSV export
+### DatabaseManager
+- One SQLite table per run, named `<algorithm>_<timestamp>`
+- Schema: `id, timestamp, cpu_time, memory_usage, execution_time`
+- Multiple processes writing concurrently will conflict — run sequentially
 
-### 2. DatabaseManager
-- **Database**: SQLite
-- **Table Structure**:
-  ```sql
-  CREATE TABLE resource_metrics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp REAL NOT NULL,
-      cpu_time REAL NOT NULL,
-      memory_usage INTEGER NOT NULL,
-      execution_time REAL NOT NULL
-  )
-  ```
-- **Features**:
-  - Automatic table creation
-  - Data insertion
-  - Query all data
-  - Clear database
-
-### 3. PlotGenerator
-- **Backend**: GNUplot
-- **Output**: PNG images with multiple plots
-- **Visualizations**:
-  - CPU Time Usage
-  - Memory Usage
-  - Execution Time
-  - Combined metrics view
-
-## Requirements
-
-### Required
-- **Compiler**: g++ with C++17 support
-- **Build System**: GNU make (required) OR CMake >= 3.10 (optional)
-- **SQLite3**: Database library and development headers
-- **POSIX Threads**: Standard on all Linux distributions
-
-### Optional (Feature Enhancement)
-- **GNUplot**: Required for PNG plot visualization (plots disabled if absent)
-- **Google Test**: Required for running test suites (`make test` with CMake)
-
-### Dependency Table
-
-| Dependency | Purpose | Ubuntu/Debian | Fedora/RHEL | Arch Linux |
-|-----------|---------|---------------|-------------|------------|
-| g++ | C++ Compiler | `g++` | `gcc-c++` | `gcc` |
-| GNU make | Build system | `make` | `make` | `make` |
-| CMake | Alternative build system | `cmake` | `cmake` | `cmake` |
-| SQLite3 dev | Database support | `libsqlite3-dev` | `sqlite-devel` | `sqlite` |
-| Google Test | Unit testing | `libgtest-dev` | `gtest-devel` | `gtest` |
-| GNUplot | Visualization | `gnuplot` | `gnuplot` | `gnuplot` |
-
-## Installation
-
-### Automatic (Recommended)
-
-```bash
-chmod +x scripts/setup.sh
-sudo ./scripts/setup.sh
-```
-
-### Ubuntu/Debian
-```bash
-sudo apt-get update
-sudo apt-get install g++ build-essential cmake make libsqlite3-dev sqlite3 libgtest-dev gnuplot nodejs npm
-```
-
-### Fedora/RHEL
-```bash
-sudo dnf install gcc-c++ cmake make sqlite-devel gtest-devel gtest gnuplot nodejs npm
-```
-
-### Arch Linux
-```bash
-sudo pacman -S base-devel cmake sqlite gtest gnuplot nodejs npm
-```
-
-### Kali Linux
-```bash
-sudo apt-get update
-sudo apt-get install g++ build-essential cmake make libsqlite3-dev sqlite3 libgtest-dev gnuplot nodejs npm
-```
-
-## Building
-
-### C++ Binary (GNU Make)
-
-```bash
-make
-```
-
-This will compile the application and create the `resource_monitor_app` executable.
-
-### Terminal UI (TUI)
-
-```bash
-cd tui
-npm install      # First time only
-npm run build    # Compile TypeScript
-npm start        # Launch TUI dashboard
-```
-
-### CMake (Alternative)
-
-```bash
-mkdir -p build && cd build
-cmake .. && make
-```
-
-## Running
-
-### Command Line
-
-```bash
-make run
-```
-
-Or manually:
-```bash
-./resource_monitor_app
-```
-
-**Algorithm Selection:**
-```bash
-# List available algorithms
-./resource_monitor_app --list
-
-# Run specific algorithm
-./resource_monitor_app --algorithm binary_search
-./resource_monitor_app --algorithm linear_search
-./resource_monitor_app --algorithm merge_sort
-
-# Short flags
-./resource_monitor_app -a binary -l
-```
-
-### Terminal UI
-
-```bash
-cd tui && npm start
-```
-
-### Testing
-
-```bash
-# Build with CMake
-mkdir -p build && cd build
-cmake .. && make
-
-# Run all tests
-ctest
-
-# Run specific test suite
-./resource_monitor_tests
-./database_manager_tests
-./plot_generator_tests
-./binary_search_tests
-./integration_tests
-
-# Verbose output
-ctest --verbose
-```
+### PlotGenerator
+- **Per-algorithm sweep plot** (4 panels): raw time vs N, time normalised by O(f(n)) (flat = correct class), log-log (slope = exponent), memory vs N
+- **Comparison plot** (4 panels): all algorithms log-log, searches only, sorts only, linear scale
+- Normalisation denominators: `log₂(n)` for binary search, `n` for linear search, `n·log₂(n)` for merge sort, `n²` for quadratic sorts
 
 ## Output Files
 
-The application generates several output files:
-
-1. **database/resource_metrics.db** - SQLite database containing all metrics (organized by run timestamp)
-2. **csv/<algorithm>_<timestamp>.csv** - CSV export of metrics for each algorithm run
-3. **png/<algorithm>_<timestamp>.png** - Visualization of the metrics (requires gnuplot)
-4. **<algorithm>_<timestamp>.dat** - Temporary data file for GNUplot
-5. **<algorithm>_<timestamp>.plt** - GNUplot script
-
-## Example Output
-
-```
-Running on CPU core: 0
-Selected algorithm: binary_search
-Run 1/5 - Target: 1000
-  Found at index: 333 (value: 999)
-  CPU Time: 0.000123s, Memory: 4567KB, Exec Time: 0.000456s
-Run 2/5 - Target: 50000
-  Found at index: 16666 (value: 49998)
-  CPU Time: 0.000234s, Memory: 4568KB, Exec Time: 0.000567s
-...
-
-Resource data saved to CSV file: csv/binary_search_20260414_123456.csv
-Plots generated as 'png/binary_search_20260414_123456.png'
-
-All operations completed successfully!
-- Algorithm: binary_search
-- Core used: 0
-- CSV export: csv/binary_search_20260414_123456.csv
-- Visualization: png/binary_search_20260414_123456.png
-```
-
-**List Algorithms:**
-```bash
-$ ./resource_monitor_app --list
-Available algorithms:
-  Binary Search - O(log n) search on sorted array
-  Linear Search - O(n) sequential search
-  Merge Sort - O(n log n) sorting algorithm
-
-Usage: ./resource_monitor_app [--algorithm <name>] [--list]
-  --algorithm, -a  Select algorithm to run (binary, linear, merge)
-  --list, -l       List available algorithms
-```
-
-## Customization
-
-### Change Algorithm
-
-Run with the `--algorithm` flag:
-
-```bash
-./resource_monitor_app --algorithm binary_search
-./resource_monitor_app --algorithm linear_search
-./resource_monitor_app --algorithm merge_sort
-```
-
-Or use short names:
-
-```bash
-./resource_monitor_app -a binary
-./resource_monitor_app -a linear
-./resource_monitor_app -a merge
-```
-
-### Add New Algorithm
-
-The system is designed for easy extension:
-
-1. **Create algorithm header** in `hpp/`:
-   ```cpp
-   // hpp/my_algorithm.hpp
-   #pragma once
-   #include <vector>
-
-   void my_algorithm(const std::vector<int>& data, int target);
-   ```
-
-2. **Implement algorithm** in `src/`:
-   ```cpp
-   // src/my_algorithm.cpp
-   #include "my_algorithm.hpp"
-
-   void my_algorithm(const std::vector<int>& data, int target) {
-       // Your implementation
-   }
-   ```
-
-3. **Update CMakeLists.txt**:
-   ```cmake
-   add_library(my_algorithm INTERFACE)
-   target_include_directories(my_algorithm INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/hpp)
-   ```
-
-4. **Update main_application.cpp**:
-   - Add to `AlgorithmType` enum
-   - Add to `algorithm_to_string()` function
-   - Add to `get_available_algorithms()` vector
-   - Add runner function (e.g., `run_my_algorithm()`)
-   - Add case in the switch statement
-
-### Change CPU Core
-Modify the `core_id` constant in `main_application.cpp`:
-
-```cpp
-const int core_id = 1; // Change from 0 to 1
-```
-
-### Modify Test Data Parameters
-Change the test data or targets in `main_application.cpp`:
-
-```cpp
-// Change array size or step
-for (int i = 0; i < 2000000; i += 2) { // Larger array, different step
-    data.push_back(i);
-}
-
-// Change search targets
-std::vector<int> targets = {500, 10000, 500000, 1500000};
-```
-
-## Database Operations
-
-### Query Data
-You can query the database directly:
-
-```bash
-sqlite3 resource_metrics.db "SELECT * FROM resource_metrics;"
-```
-
-### Clear Database
-```bash
-sqlite3 resource_metrics.db "DELETE FROM resource_metrics;"
-```
-
-## Cleaning Up
-
-```bash
-make clean
-```
-
-This removes all compiled files and generated outputs.
+| Path | Contents |
+|---|---|
+| `csv/<algo>_<ts>.csv` | Per-run metrics (id, timestamp, cpu_time, memory_usage, execution_time) |
+| `csv/<algo>_sweep_<ts>.csv` | Sweep data (n, execution_time, cpu_time, memory_usage) |
+| `csv/comparison_<ts>.csv` | Comparison data (n, binary_search, linear_search, …) |
+| `database/resource_metrics.db` | SQLite with all run tables |
+| `png/<algo>_sweep_<ts>.png` | 4-panel complexity plot |
+| `png/comparison_<ts>.png` | 4-panel comparison plot |
+| `png/*.dat`, `png/*.plt` | GNUplot intermediate files |
 
 ## Testing
 
-The project includes a comprehensive test suite with **21 tests** across 5 test suites, all using Google Test framework.
+**51 tests** across 8 suites (Google Test, optional):
 
-### Test Structure
-
-| Test Suite | Tests | Coverage |
-|------------|-------|----------|
-| **Resource Monitor** | 3 | Start/stop monitoring, adding data points, CSV export |
-| **Database Manager** | 3 | Database initialization, insert/query operations, table management |
-| **Plot Generator** | 4 | Valid data handling, empty data validation, file I/O, CSV conversion |
-| **Binary Search** | 6 | Finding elements, not-found cases, edge cases (empty, single element), large arrays, CPU affinity |
-| **Integration** | 5 | Full pipeline tests combining monitoring, database, CSV export, and plot generation |
-
-### Running Tests
+| Suite | File | Tests |
+|---|---|---|
+| Resource Monitor | test_resource_monitor.cpp | 3 |
+| Database Manager | test_database_manager.cpp | 3 |
+| Plot Generator | test_plot_generator.cpp | 4 |
+| Binary Search | test_binary_search.cpp | 6 |
+| Linear Search | test_linear_search.cpp | 9 |
+| Merge Sort | test_merge_sort.cpp | 10 |
+| Sorting Algorithms | test_sorting_algorithms.cpp | 30 |
+| Integration | test_integration.cpp | 5 |
 
 ```bash
-# Build with CMake (includes test compilation)
-mkdir -p build && cd build
-cmake .. && make
-
-# Run all tests
-ctest
-
-# Run with verbose output
-ctest --verbose
-
-# Run individual test suite
-./resource_monitor_tests
-./database_manager_tests
-./plot_generator_tests
-./binary_search_tests
-./integration_tests
+cmake -B build && cmake --build build -j$(nproc)
+cd build && ctest --verbose
 ```
 
-### Test Features
+## Adding a New Algorithm
 
-- **Automatic Cleanup**: All tests clean up temporary files in `TearDown()`
-- **No Side Effects**: Tests use temporary database/files that don't affect production data
-- **Comprehensive Coverage**: Unit tests for individual components + integration tests for full pipelines
-- **Edge Case Testing**: Empty arrays, single elements, large datasets, invalid inputs
+1. Create `hpp/my_algorithm.hpp` — implement the algorithm as a header-only function
+2. Add an `add_library(my_algorithm INTERFACE)` block in `CMakeLists.txt` and link it to `resource_monitor_app`
+3. In `main_application.cpp`:
+   - Add to the `AlgorithmType` enum
+   - Add a case in `parse_algorithm()`
+   - Add a case in `algorithm_to_string()`
+   - Add dispatch in the main algorithm switch
+4. In `hpp/plot_generator.hpp`, add a normalisation denominator in `normalization_expr()`
+5. In `tui/src/ui/main-menu.ts`, add a menu entry
+6. In `tui/src/index.ts`, add a `case` in the main switch
+7. Write tests in `tests/test_my_algorithm.cpp` and register in `CMakeLists.txt`
 
-### Example Test Output
+## Database Operations
 
+```bash
+# List all run tables
+sqlite3 database/resource_metrics.db ".tables"
+
+# Query a specific run
+sqlite3 database/resource_metrics.db "SELECT * FROM \"binary_search_20260518_171221\";"
+
+# Total records per algorithm
+sqlite3 database/resource_metrics.db \
+  "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';" \
+  | sed 's/_2026.*//' | sort | uniq -c
+
+# Delete all data
+sqlite3 database/resource_metrics.db \
+  "$(sqlite3 database/resource_metrics.db \
+    "SELECT 'DROP TABLE IF EXISTS \"'||name||'\";' FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")"
 ```
-Running main() from ./googletest/src/gtest_main.cc
-[==========] Running 21 tests from 5 test suites.
-[----------] Global test environment set-up.
-[ RUN      ] BinarySearchTest.FindExistingElement
-[       OK ] BinarySearchTest.FindExistingElement (0 ms)
-[ RUN      ] IntegrationTest.FullPipelineWithDatabaseAndCSV
-[       OK ] IntegrationTest.FullPipelineWithDatabaseAndCSV (503 ms)
-...
-[==========] 21 tests from 5 test suites ran. (4150 ms total)
-[  PASSED  ] 21 tests.
 
-100% tests passed, 0 tests failed out of 21
-```
+## Troubleshooting
 
-## Error Handling
+**Binary not found by TUI** — build first: `cmake -B build && cmake --build build`
 
-The application includes comprehensive error handling for:
-- Database operations
-- File I/O operations
-- Resource monitoring
-- GNUplot execution
+**No plots generated** — install gnuplot (`sudo apt-get install gnuplot`), then rebuild (`cmake -B build`) so `HAS_GNUPLOT=1` is set
 
-## Performance Considerations
+**Database locked errors** — do not run multiple algorithm instances simultaneously; SQLite allows only one writer at a time
 
-- The system adds minimal overhead to the binary search
-- Database operations are optimized with prepared statements
-- Resource monitoring uses efficient system calls
-- Plotting is done after all measurements are complete
+**CMake can't find GTest** — GTest is optional; tests are skipped if not installed. To enable: `sudo apt-get install libgtest-dev`
 
-## Future Enhancements
-
-- [ ] Add algorithm selection support in TUI (CLI already supports it)
-- [ ] Implement real-time metrics streaming during execution
-- [ ] Add configurable parameters via TUI settings screen
-- [ ] Add more visualization types in TUI (sparklines, comparison charts)
-- [ ] Add export functionality from TUI (CSV download, report generation)
-- [ ] Support for parallel algorithm execution and comparison
-- [ ] Add more algorithms (Quick Sort, Heap Sort, Hash Table operations)
-- [ ] Docker containerization for easy deployment
-- [ ] Web-based dashboard alternative to TUI
+**Sweep too slow for quadratic sorts** — reduce `--sweep-max` (default caps at 100K for O(n²) algorithms, but even 50K bubble sort takes ~6s)
 
 ## License
 
-This project is open-source and available for educational and research purposes.
+Open-source, available for educational and research purposes.

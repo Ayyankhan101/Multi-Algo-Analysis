@@ -1,6 +1,6 @@
 # Multi-Algo-Analysis TUI
 
-Terminal UI for the Multi-Algo-Analysis resource monitoring system.
+Interactive terminal UI for benchmarking and visualising six algorithms with live resource monitoring.
 
 ## Quick Start
 
@@ -11,132 +11,140 @@ npm run build
 npm start
 ```
 
-## Features
+## Main Menu
 
-- **Run Algorithms** - Execute binary search with live resource monitoring
-- **View Historical Runs** - Browse past executions from SQLite database
-- **View Latest Results** - Inspect most recent CSV with stats and charts
-- **System Info** - Display project structure and environment details
-
-## Screenshots
-
-### Main Menu
 ```
-┌──────────────────────────────────────────────────┐
-│         Multi-Algo-Analysis TUI                  │
-│       Resource Monitoring Dashboard              │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│           Multi-Algo-Analysis TUI                    │
+│         Resource Monitoring Dashboard                │
+└──────────────────────────────────────────────────────┘
 
   1. Run Binary Search
-  2. View Historical Runs
-  3. View Latest Results
-  4. System Info
-  5. Exit
+  2. Run Linear Search
+  3. Run Merge Sort
+  4. Run Insertion Sort
+  5. Run Selection Sort
+  6. Run Bubble Sort
+  7. Complexity Sweep
+  8. Compare All Algorithms
+  9. View Historical Runs
+  10. View Latest Results
+  11. System Info
+  12. Settings
+  13. Exit
 
-      Execute algorithm with resource monitoring
-
-  ↑/↓ Navigate | Enter Select | q Quit
+  ↑/↓ Navigate | 1-0 Select | q Quit
 ```
 
-### Execution Results
+## Features
+
+### Run Algorithm (options 1–6)
+Live streaming execution: each run result appears as it completes, showing CPU time, memory, and execution time. After all runs finish, an enhanced results screen with ASCII charts is shown, followed by an export prompt.
+
+### Complexity Sweep (option 7)
+Pick one algorithm. The binary is run across log-spaced input sizes (e.g. N = 1K → 10M for binary search, 1K → 50K for quadratic sorts). Results stream live into a table:
+
 ```
-          Binary Search Execution Results
+         N | Exec Time   | CPU Time    | Memory (KB)
+      1000 | 2.7µs       | 1.0µs       | 4320
+      1623 | 1.7µs       | 2.0µs       | 4384
+      2636 | 1.4µs       | 1.0µs       | 4392
+      ...
+  10000000 | 5.5µs       | 3.0µs       | 43560
 
-Target     | Status  | Index    | CPU Time(s)    | Memory(KB) | Exec Time(s)
-1000       | Not Found | N/A    | 3.00e-6        | 7560       | 1.45e-5
-50000      | Not Found | N/A    | 1.00e-6        | 7560       | 4.09e-6
-999999     | Found   | 333333   | 0.00e+0        | 7560       | 4.68e-6
-
-Summary:
-  Total Searches: 5
-  Found: 1 | Not Found: 4
-  Avg CPU Time: 8.00e-7s
-  Avg Memory: 7560KB
-  Avg Exec Time: 6.12e-6s
-```
-
-### Historical Runs Browser
-```
-               Historical Execution Runs
-
-#   Timestamp            Table Name                          Metrics
-1   2026-04-14 06:03:05 binary_search_20260414_060305       5 metrics
-2   2026-04-14 05:53:59 binary_search_20260414_055359       5 metrics
-3   2026-01-26 22:08:51 binary_search_20260126_220851       5 metrics
-
-┌────────────────────────────────────────────────────┐
-│ Run Details: binary_search_20260414_060305          │
-│                                                     │
-│   Timestamp:   2026-04-14 06:03:05                  │
-│   Metrics:     5                                    │
-│   Avg CPU Time:  8.00e-7s                           │
-│   Avg Memory:    7560KB                             │
-│   Avg Exec Time: 6.12e-6s                           │
-└────────────────────────────────────────────────────┘
+✓ Sweep complete — 20 data points
+CSV:  /path/to/csv/binary_search_sweep_20260518_170559.csv
+Plot: /path/to/png/binary_search_sweep_20260518_170559.png
 ```
 
-### Latest Results with ASCII Chart
+The PNG is a 4-panel plot: raw time, normalized by complexity class, log-log slope, and memory usage.
+
+### Compare All Algorithms (option 8)
+Benchmarks all 6 algorithms across the same input sizes in a single run, streaming each measurement live:
+
 ```
-            Latest Results: binary_search_20260414_060305.csv
+         N | Algorithm           | Exec Time
+      1000 | binary_search       | 2.8µs
+      1000 | linear_search       | 1.5µs
+      1000 | merge_sort          | 50.5µs
+      1000 | insertion_sort      | 285µs
+      1000 | selection_sort      | 1.6ms
+      1000 | bubble_sort         | 2.6ms
+     ...
+     50000 | binary_search       | 1.7µs
+     50000 | bubble_sort         | 6.6s
 
-#   Timestamp        CPU Time(s)      Memory(KB)   Exec Time(s)
-1   1744617785.12    7.00e-6          7412         2.30e-5
-2   1744617785.13    0.00e+0          7412         5.15e-6
-...
-
-┌────────────────────────────────────────────────────┐
-│ Summary Statistics                                  │
-│                                                     │
-│   Total Measurements: 5                             │
-│   Avg CPU Time:   1.40e-6s                          │
-│   Avg Memory:     7412KB  (Range: 7412 - 7412KB)   │
-│   Avg Exec Time:  8.62e-6s                          │
-└────────────────────────────────────────────────────┘
-
-Memory Usage Chart (KB)
-
- 1  │████████████████████████████████████████ 7412
- 2  │████████████████████████████████████████ 7412
- 3  │████████████████████████████████████████ 7412
+✓ Comparison complete — 72 measurements
 ```
+
+Produces a 4-panel comparison PNG showing all complexity classes side by side.
+
+### View Historical Runs (option 9)
+Browse all past executions stored in SQLite. Select any run to see per-metric detail and averages.
+
+### View Latest Results (option 10)
+Loads the most recent CSV and displays it with summary statistics and an ASCII memory-usage chart.
+
+### Settings (option 12)
+Configure:
+- Array size (`dataSize`)
+- Step between elements (`dataStep`)
+- Number of runs per execution (`totalRuns`)
+- CPU core affinity (`cpuCore`)
+- Custom search targets
+
+Settings are persisted to `.settings.json` in the project root.
 
 ## Keyboard Controls
 
-- **↑/↓** or **j/k** - Navigate menus
-- **Enter** or **1-5** - Select option
-- **q** or **Escape** - Go back / Exit
+| Key | Action |
+|---|---|
+| ↑ / ↓ or j / k | Navigate list |
+| Enter | Select |
+| 1–9, 0 | Jump to item by number |
+| q / Escape / Ctrl-C | Go back / Exit |
 
 ## Architecture
 
 ```
-┌─────────────────┐         ┌──────────────────┐
-│  TypeScript TUI │ ────▶   │  C++ Binary       │
-│  (blessed)      │         │  (resource_monitor)│
-└─────────────────┘         └──────────────────┘
-        │                            │
-        ├── View Historical Runs     ├── CPU/Memory metrics
-        ├── View Latest Results      ├── CSV/DB reading
-        └── System Info              └── Environment checks
+┌─────────────────────┐    JSON lines    ┌────────────────────────┐
+│  TypeScript TUI      │ ──────────────▶ │  C++ binary             │
+│  (blessed)           │                 │  resource_monitor_app   │
+└─────────────────────┘                 └────────────────────────┘
+        │                                         │
+        ├── runner.ts                             ├── --algorithm <name>
+        │   runAlgorithm()     ◀── run_result     ├── --sweep
+        │   runSweep()         ◀── sweep_point    ├── --compare
+        │   runComparison()    ◀── compare_point  └── --json
+        │
+        ├── database.ts  (reads SQLite directly for history)
+        └── ui/
+            ├── main-menu.ts
+            ├── live-execution.ts     (streaming run results)
+            ├── complexity-sweep.ts   (sweep + comparison screens)
+            ├── execution-screen.ts   (results table)
+            ├── visualizations.ts     (enhanced results + charts)
+            ├── export-screen.ts
+            ├── historical-runs.ts
+            ├── latest-results.ts
+            ├── settings-screen.ts
+            ├── system-info.ts
+            └── loading.ts
 ```
 
 ## Development
 
 ```bash
-# Build TypeScript
-npm run build
-
-# Watch mode (auto-rebuild)
-npm run watch
-
-# Run directly with ts-node
-npm run dev
+npm run build    # Compile TypeScript → dist/
+npm run watch    # Auto-rebuild on changes
+npm run dev      # Run directly with ts-node (no build)
 ```
 
 ## Tech Stack
 
-- **TypeScript** - Type-safe JavaScript
-- **blessed** - Terminal UI framework
-- **better-sqlite3** - SQLite database access
-- **csv-parser** - CSV file reading
-- **chalk** - Colored terminal output
-- **figlet** - ASCII art banners
+- **TypeScript** — type-safe JavaScript
+- **blessed** — terminal UI widgets
+- **better-sqlite3** — SQLite for history browsing
+- **csv-parser** — CSV reading
+- **chalk** — coloured output
+- **figlet** — ASCII banner
