@@ -88,8 +88,9 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
       updateList();
     });
 
-    // Enter to edit/toggle (action fires after select, focusedField is already current)
-    settingsList.on('action', () => {
+    // Enter to edit/toggle — use 'select' not 'action'; 'action' also fires on Escape
+    // (cancelSelected) which destroys screen before dialog creation → "No active screen"
+    settingsList.on('select', () => {
       if (dialogOpen) return;
       const field = fields[focusedField].key;
 
