@@ -182,7 +182,11 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
         value: currentValue,
         inputOnFocus: true,
         border: { type: 'line' },
-        style: { focus: { border: { fg: 'blue' } } },
+        style: {
+          fg: 'white',
+          bg: 'black',
+          focus: { fg: 'white', bg: 'blue', border: { fg: 'cyan' } },
+        },
       });
 
       const helpText = blessed.box({
@@ -255,7 +259,11 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
         value: currentValue,
         inputOnFocus: true,
         border: { type: 'line' },
-        style: { focus: { border: { fg: 'blue' } } },
+        style: {
+          fg: 'white',
+          bg: 'black',
+          focus: { fg: 'white', bg: 'blue', border: { fg: 'cyan' } },
+        },
       });
 
       const helpText = blessed.box({
