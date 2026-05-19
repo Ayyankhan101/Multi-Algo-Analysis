@@ -15,7 +15,7 @@ function resolveProjectRoot(binaryPath: string): string {
   return path.dirname(binaryPath);
 }
 
-const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
+const PROCESS_TIMEOUT_MS = 120000; // 120 seconds
 
 export interface LiveExecutionOutput {
   results: RunResult[];

@@ -4,7 +4,7 @@ import path from 'path';
 import csv from 'csv-parser';
 import { RunResult, ResourceMetric, SweepPoint, SweepOutput, ComparePoint, ComparisonOutput } from './types';
 
-const PROCESS_TIMEOUT_MS = 60000; // 60 seconds
+const PROCESS_TIMEOUT_MS = 120000; // 120 seconds
 
 function resolveRunCwd(binaryPath: string): string {
   // Walk up from the binary's directory to find the project root (CMakeLists.txt).
