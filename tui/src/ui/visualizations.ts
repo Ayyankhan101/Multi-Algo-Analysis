@@ -82,29 +82,37 @@ export function generateHorizontalBarChart(
 /**
  * Generate a comparison table for multiple algorithm runs
  */
-export function generateComparisonTable(results: RunResult[]): string {
+export function generateComparisonTable(results: RunResult[], isSearch: boolean = true): string {
   if (results.length === 0) return '';
-  
+
   const lines: string[] = [];
-  
-  // Header
-  lines.push('{bold}{cyan-fg}Run │ Target     │ Status    │ CPU Time       │ Memory(KB)  │ Exec Time{/cyan-fg}{/bold}');
-  lines.push('─'.repeat(80));
-  
-  // Data rows
-  results.forEach((r, i) => {
-    const runNum = String(i + 1).padStart(3);
-    const target = String(r.target).padEnd(10);
-    const status = r.found 
-      ? '{green-fg}Found{/green-fg}'.padEnd(9) 
-      : '{red-fg}Not Found{/red-fg}'.padEnd(9);
-    const cpuTime = r.cpuTime.toExponential(2).padEnd(14);
-    const memory = String(r.memoryUsage).padEnd(11);
-    const execTime = r.execTime.toExponential(2);
-    
-    lines.push(`${runNum} │ ${target} │ ${status} │ ${cpuTime} │ ${memory} │ ${execTime}`);
-  });
-  
+
+  if (isSearch) {
+    lines.push('{bold}{cyan-fg}Run │ Target     │ Status    │ CPU Time       │ Memory(KB)  │ Exec Time{/cyan-fg}{/bold}');
+    lines.push('─'.repeat(80));
+    results.forEach((r, i) => {
+      const runNum = String(i + 1).padStart(3);
+      const target = String(r.target).padEnd(10);
+      const status = r.found
+        ? '{green-fg}Found{/green-fg}'.padEnd(9)
+        : '{red-fg}Not Found{/red-fg}'.padEnd(9);
+      const cpuTime = r.cpuTime.toExponential(2).padEnd(14);
+      const memory = String(r.memoryUsage).padEnd(11);
+      const execTime = r.execTime.toExponential(2);
+      lines.push(`${runNum} │ ${target} │ ${status} │ ${cpuTime} │ ${memory} │ ${execTime}`);
+    });
+  } else {
+    lines.push('{bold}{cyan-fg}Run │ CPU Time       │ Memory(KB)  │ Exec Time{/cyan-fg}{/bold}');
+    lines.push('─'.repeat(55));
+    results.forEach((r, i) => {
+      const runNum = String(i + 1).padStart(3);
+      const cpuTime = r.cpuTime.toExponential(2).padEnd(14);
+      const memory = String(r.memoryUsage).padEnd(11);
+      const execTime = r.execTime.toExponential(2);
+      lines.push(`${runNum} │ ${cpuTime} │ ${memory} │ ${execTime}`);
+    });
+  }
+
   return lines.join('\n');
 }
 
@@ -228,6 +236,8 @@ export function showEnhancedResults(
       tags: true,
     });
     
+    const isSearch = algorithmName.includes('search');
+
     // Comparison table
     const tableY = 3;
     const tableHeight = Math.min(results.length + 2, 10);
@@ -236,7 +246,7 @@ export function showEnhancedResults(
       left: '5%',
       width: '90%',
       height: tableHeight,
-      content: generateComparisonTable(results),
+      content: generateComparisonTable(results, isSearch),
       tags: true,
     });
 
@@ -302,8 +312,8 @@ export function showEnhancedResults(
   Avg Exec Time:  {yellow-fg}${avgExec.toExponential(2)}s{/yellow-fg}   Stddev: {gray-fg}${stddevExec.toExponential(2)}s{/gray-fg}   p95: {red-fg}${p95Exec.toExponential(2)}s{/red-fg}
   Avg CPU Time:   {cyan-fg}${avgCpu.toExponential(2)}s{/cyan-fg}
   Avg Memory:     {green-fg}${avgMem.toFixed(0)}KB{/green-fg}
-  Total Runs:     {magenta-fg}${results.length}{/magenta-fg}
-  Success Rate:   {blue-fg}${((results.filter(r => r.found).length / results.length) * 100).toFixed(0)}%{/blue-fg}`,
+  Total Runs:     {magenta-fg}${results.length}{/magenta-fg}${isSearch ? `
+  Success Rate:   {blue-fg}${((results.filter(r => r.found).length / results.length) * 100).toFixed(0)}%{/blue-fg}` : ''}`,
       tags: true,
     });
 
