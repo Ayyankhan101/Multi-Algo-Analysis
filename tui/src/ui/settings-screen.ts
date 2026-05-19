@@ -81,8 +81,8 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
     settingsList.select(0);
     settingsList.focus();
 
-    // Update arrow indicator and desc when navigating
-    settingsList.on('item change', (item, index) => {
+    // blessed emits 'select item' (not 'item change') on navigation
+    settingsList.on('select item', (_item: any, index: number) => {
       focusedField = index;
       descBox.setContent(`{gray-fg}${fields[index].desc}{/gray-fg}`);
       updateList();
@@ -90,8 +90,9 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
 
     // Enter to edit/toggle — use 'select' not 'action'; 'action' also fires on Escape
     // (cancelSelected) which destroys screen before dialog creation → "No active screen"
-    settingsList.on('select', () => {
+    settingsList.on('select', (_item: any, index: number) => {
       if (dialogOpen) return;
+      focusedField = index;
       const field = fields[focusedField].key;
 
       if (field === 'useCustomTargets') {
