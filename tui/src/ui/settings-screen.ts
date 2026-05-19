@@ -82,10 +82,11 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
     settingsList.focus();
 
     // blessed emits 'select item' (not 'item change') on navigation
+    // Do NOT call updateList() here — setItems→select→'select item' = infinite recursion
     settingsList.on('select item', (_item: any, index: number) => {
       focusedField = index;
       descBox.setContent(`{gray-fg}${fields[index].desc}{/gray-fg}`);
-      updateList();
+      screen.render();
     });
 
     // Enter to edit/toggle — use 'select' not 'action'; 'action' also fires on Escape
@@ -135,7 +136,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
     }
 
     function buildListItems(): string[] {
-      return fields.map((f, i) => ` ${i === focusedField ? '{cyan-fg}▸{/cyan-fg}' : ' '} ${f.label}: ${
+      return fields.map((f) => `  ${f.label}: ${
         f.key === 'useCustomTargets' ? (params[f.key] ? '{green-fg}Yes{/green-fg}' : '{gray-fg}No{/gray-fg}') :
         f.key === 'customTargets' ? (params[f.key] as number[]).join(', ') :
         String(params[f.key])
