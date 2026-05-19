@@ -203,6 +203,9 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
       form.append(textBox);
       form.append(helpText);
       screen.append(form);
+      // setValue after append: initializes this._value + calls setContent so
+      // the textbox renders the current value instead of appearing blank
+      textBox.setValue(currentValue);
       textBox.focus();
       dialogOpen = true;
       screen.render();
@@ -218,7 +221,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
       textBox.key(['escape'], () => closeDialog());
 
       textBox.on('submit', (val: string) => {
-        const num = parseInt(val);
+        const num = parseInt(val != null ? val : textBox.getValue());
         if (!isNaN(num) && num >= 0) {
           (params as any)[fieldKey] = num;
           updateList();
@@ -280,6 +283,7 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
       form.append(textBox);
       form.append(helpText);
       screen.append(form);
+      textBox.setValue(currentValue);
       textBox.focus();
       dialogOpen = true;
       screen.render();
@@ -295,9 +299,11 @@ export function showSettingsScreen(settings: AppSettings): Promise<AppSettings |
       textBox.key(['escape'], () => closeDialog());
 
       textBox.on('submit', (val: string) => {
-        const parts = val.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n >= 0);
+        const raw = val != null ? val : textBox.getValue();
+        const parts = raw.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n >= 0);
         if (parts.length > 0) {
           params.customTargets = parts;
+          params.useCustomTargets = true;
           updateList();
         }
         closeDialog();
