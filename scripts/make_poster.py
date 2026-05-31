@@ -253,7 +253,7 @@ def tbl_measured():
 
 
 HTML = f"""<!doctype html><html><head><meta charset='utf-8'><style>
-@page {{ size: 841mm 1240mm; margin: 0; }}  /* tall single-page poster */
+@page {{ size: 841mm 1370mm; margin: 0; }}  /* tall single-page poster */
 * {{ box-sizing: border-box; }}
 body {{ margin:0; font-family:'DejaVu Sans',Arial,sans-serif; color:{INK};
        background:#ffffff; width:841mm; }}
@@ -360,6 +360,42 @@ ul.find li {{ margin-bottom:3mm; }}
       <span class='htag'>Relative Speed-up</span>
       <img src='speedup.png'>
       <p>Measured speed-up of each sort over Bubble Sort at the largest tested size.</p>
+    </div>
+
+    <div class='card full'>
+      <span class='htag'>Spotlight — Shell Sort &amp; Interpolation Search</span>
+      <div style='display:grid; grid-template-columns:1fr 1fr; gap:12mm; align-items:start'>
+        <div>
+          <p style='font-size:18pt;color:{TEAL_DK};font-weight:bold;margin-bottom:2mm'>
+            Shell Sort &nbsp;<span style='font-weight:normal;font-size:13pt'>(a smarter Insertion Sort)</span></p>
+          <p>Plain Insertion Sort only swaps <b>adjacent</b> elements, so a value far
+          from its place crawls one step at a time. Shell Sort first compares
+          elements a large <b>gap</b> apart, then shrinks the gap, ending at gap&nbsp;1
+          — by which point the array is nearly sorted and the final pass is cheap.</p>
+          <ul class='find' style='margin-left:5mm'>
+            <li>Big early jumps move elements close to home fast.</li>
+            <li>Best <b>O(n log n)</b> · Avg ≈ <b>O(n<sup>1.3</sup>)</b> · Worst <b>O(n²)</b>.</li>
+            <li><b>In-place, O(1) space, not stable.</b></li>
+            <li>Measured here at {CMP10['shell_sort'][-1]*1000:.3f} ms for n=10k —
+            in the n&nbsp;log&nbsp;n group, near Heap/Merge.</li>
+          </ul>
+        </div>
+        <div>
+          <p style='font-size:18pt;color:{TEAL_DK};font-weight:bold;margin-bottom:2mm'>
+            Interpolation Search &nbsp;<span style='font-weight:normal;font-size:13pt'>(a smarter Binary Search)</span></p>
+          <p>Binary Search always probes the <b>middle</b>. Interpolation Search
+          <b>estimates where the value should be</b> — like opening a phone book near
+          the back to find “Khan”, not at the centre. Requires <b>sorted</b> data and
+          works best when values are <b>uniformly distributed</b>.</p>
+          <p style='font-family:monospace;font-size:12.5pt;background:#fff;border:1px solid #cdd9db;border-radius:2mm;padding:3mm'>
+          pos = lo + (target − a[lo]) · (hi − lo) / (a[hi] − a[lo])</p>
+          <ul class='find' style='margin-left:5mm'>
+            <li>Uniform data: <b>O(log log n)</b> avg — beats Binary's O(log n).</li>
+            <li>Skewed/clustered data: degrades to <b>O(n)</b> worst case.</li>
+            <li><b>O(1) space.</b> Measured flat at ~{CMP10['interpolation_search'][-1]*1e6:.2f} µs (n=10k).</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <div class='card full'>
