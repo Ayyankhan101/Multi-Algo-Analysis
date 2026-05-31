@@ -52,7 +52,8 @@ plt.rcParams.update({
     "xtick.color": INK,
     "ytick.color": INK,
     "grid.color": "#d7e1e3",
-    "figure.dpi": 150,
+    "figure.dpi": 220,
+    "savefig.dpi": 220,
 })
 
 
@@ -252,7 +253,7 @@ def tbl_measured():
 
 
 HTML = f"""<!doctype html><html><head><meta charset='utf-8'><style>
-@page {{ size: 841mm 1189mm; margin: 0; }}  /* A0 portrait */
+@page {{ size: 841mm 1240mm; margin: 0; }}  /* tall single-page poster */
 * {{ box-sizing: border-box; }}
 body {{ margin:0; font-family:'DejaVu Sans',Arial,sans-serif; color:{INK};
        background:#ffffff; width:841mm; }}
@@ -266,11 +267,11 @@ body {{ margin:0; font-family:'DejaVu Sans',Arial,sans-serif; color:{INK};
 .card.full {{ grid-column:1 / -1; }}
 .htag {{ display:inline-block; background:{TEAL}; color:#fff; font-weight:bold;
          font-size:20pt; padding:3mm 7mm; border-radius:3mm; margin:-13mm 0 6mm -2mm; }}
-.card p {{ font-size:15pt; line-height:1.5; margin:0 0 4mm; }}
+.card p {{ font-size:16.5pt; line-height:1.5; margin:0 0 4mm; }}
 .card img {{ width:100%; border-radius:3mm; background:#fff; }}
-ul.find {{ font-size:15pt; line-height:1.55; margin:2mm 0 0 6mm; }}
+ul.find {{ font-size:16.5pt; line-height:1.55; margin:2mm 0 0 6mm; }}
 ul.find li {{ margin-bottom:3mm; }}
-.ctab {{ width:100%; border-collapse:collapse; font-size:12.5pt; }}
+.ctab {{ width:100%; border-collapse:collapse; font-size:13.5pt; }}
 .ctab th {{ background:{TEAL}; color:#fff; padding:3mm 2mm; text-align:left; }}
 .ctab td {{ padding:2.4mm 2mm; border-bottom:1px solid #cdd9db; }}
 .ctab tr:nth-child(even) td {{ background:#e3ecee; }}
@@ -301,16 +302,32 @@ ul.find li {{ margin-bottom:3mm; }}
 
   <div class='grid'>
     <div class='card'>
-      <span class='htag'>Introduction</span>
-      <p>We measure how sorting and searching algorithms behave in practice versus
-      their textbook complexity. Seven sorts (Bubble, Selection, Insertion, Shell,
-      Heap, Merge, Quick) and three searches (Linear, Binary, Interpolation) were
-      timed on identical hardware across geometrically spaced input sizes, using
-      CPU-time and memory instrumentation.</p>
-      <p>Result: asymptotic class reliably predicts <i>scaling</i>, but constant
-      factors and data layout decide the <i>real</i> winner. O(n log n) sorts pull
-      decisively ahead past a few thousand elements; among searches, interpolation
-      and binary stay flat while linear grows with n.</p>
+      <span class='htag'>Introduction &amp; Analysis</span>
+      <p>This study asks a simple question: <b>does Big-O actually predict what
+      happens on real hardware?</b> We implemented ten classic algorithms in
+      C++ — seven sorts (Bubble, Selection, Insertion, Shell, Heap, Merge, Quick)
+      and three searches (Linear, Binary, Interpolation) — and benchmarked each
+      over geometrically spaced input sizes (n = 10³ → 5×10⁶). Every run records
+      wall-clock time, CPU time and resident memory; per-size results are averaged
+      and de-noised so the measured curves can be laid directly over the
+      theoretical growth classes.</p>
+      <p><b>Scaling matches theory.</b> On log–log axes every algorithm traces a
+      near-straight line whose slope equals its asymptotic exponent: the quadratic
+      sorts (Bubble, Selection, Insertion) climb at slope ≈ 2, while Merge, Quick,
+      Heap and Shell follow the gentler n&nbsp;log&nbsp;n slope. The gap is dramatic
+      in absolute terms — at n = 50k Bubble Sort needs
+      {CMP6['bubble_sort'][-1]:.1f}s versus {CMP6['merge_sort'][-1]*1000:.0f}ms for
+      Merge Sort, a {CMP6['bubble_sort'][-1]/CMP6['merge_sort'][-1]:,.0f}× spread.</p>
+      <p><b>But constants decide the winner.</b> Heap and Shell share the n log n
+      class yet run several times slower than Quick Sort because of larger hidden
+      constants and weaker cache locality; Quick Sort wins in practice on random
+      data despite its O(n²) worst case. Insertion Sort, though O(n²), beats the
+      n log n group at very small n thanks to its tiny constant and O(n) best case
+      on near-sorted input. Among searches, Binary and Interpolation stay flat in
+      the microsecond range as n grows by four orders of magnitude, while Linear
+      Search rises straight along O(n). Memory tells the same story: only Merge
+      Sort's O(n) merge buffer shows real growth — all others hold near-constant
+      space, exactly as predicted.</p>
     </div>
     <div class='card'>
       <span class='htag'>Complexity Reference</span>
@@ -363,7 +380,7 @@ ul.find li {{ margin-bottom:3mm; }}
 </div>
 
 <div class='foot'>
-  <div><b>Submitted by:</b> &nbsp; Faisal Hakimi · Sadiq Mansoor · Jalil Ur Rehman</div>
+  <div><b>Submitted by:</b> &nbsp; Ayyan · Saad · Dawood</div>
   <div>IM | Sciences · Multi-Algo-Analysis · data: csv/comparison_*</div>
 </div>
 </body></html>"""
