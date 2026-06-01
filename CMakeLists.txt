@@ -6,8 +6,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Enable warnings and optimizations
-add_compile_options(-Wall -Wextra -Werror -O2)
+# Enable warnings and optimizations (compiler-specific flags)
+if(MSVC)
+    add_compile_options(/W4 /WX /O2)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+else()
+    add_compile_options(-Wall -Wextra -Werror -O2)
+endif()
 
 # --- Dependencies ---
 find_package(Threads REQUIRED)
@@ -119,6 +124,11 @@ target_link_libraries(resource_monitor_app
     ${SQLite3_LIBRARIES}
     Threads::Threads
 )
+
+# Windows: link psapi for GetProcessMemoryInfo
+if(WIN32)
+    target_link_libraries(resource_monitor_app PRIVATE psapi)
+endif()
 
 # --- Tests (only built when GTest is available) ---
 if (GTest_FOUND)
