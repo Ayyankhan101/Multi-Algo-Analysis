@@ -1,6 +1,6 @@
 # Multi-Algo-Analysis
 
-A comprehensive C++ system for benchmarking, monitoring, and visualizing the time and space complexity of six algorithms — with an interactive TUI dashboard, complexity sweep plots, and a complete test suite.
+A comprehensive C++ system for benchmarking, monitoring, and visualizing the time and space complexity of ten algorithms — with an interactive TUI dashboard, complexity sweep plots, hardware performance counters, and a complete test suite.
 
 ## Algorithms
 
@@ -73,10 +73,10 @@ cd tui && npm install && npm run build && npm start
 ## Features
 
 - **10 Algorithms** — Binary/Linear/Interpolation Search, Merge/Quick/Heap/Shell/Insertion/Selection/Bubble Sort
-- **Statistical Sweep** — warmup + configurable measurement runs per point; reports mean, stddev, median, p95 per N point
+- **Statistical Sweep** — 3 warmup + configurable measurement runs per point; reports mean, stddev, median, p95 per N point
 - **Data Variety** — `--data-type sorted|reverse|random|partial|duplicates` for different input shapes
-- **Hardware Perf Counters** — `perf_event_open` tracking instructions, cache misses, branch mispredictions (Linux)
-- **Compare All** — benchmark all 10 algorithms across the same input sizes; produces a side-by-side comparison plot
+- **Hardware Perf Counters** — `perf_event_open` tracking instructions, cache misses, branch mispredictions (Linux); flows through sweep JSON, CSV, SQLite, and TUI visualizations
+- **Compare All** — benchmark all 10 algorithms across the same input sizes with warmup + multi-run statistics; produces a side-by-side comparison plot
 - **Complexity Analysis** — `scripts/analyze_complexity.py` fits a log-log curve to sweep data and reports slope + R²
 - **LaTeX Auto-Generation** — `scripts/generate_report.py` produces a complete complexity report from sweep CSVs
 - **Live TUI Dashboard** — streaming execution, ASCII sparkline during sweep, p95/stddev stats display
@@ -91,11 +91,12 @@ cd tui && npm install && npm run build && npm start
 
 ```
 ├── src/
-│   └── main_application.cpp   # CLI entry point, all algorithm dispatch
+│   └── main_application.cpp   # CLI entry point, algorithm dispatch via dispatch_algorithm()
 ├── hpp/
 │   ├── resource_monitor.hpp
 │   ├── database_manager.hpp
-│   ├── plot_generator.hpp          # sweep + comparison plot generators
+│   ├── perf_counter.hpp              # Linux perf_event_open hardware counters
+│   ├── plot_generator.hpp            # sweep + comparison plot generators
 │   ├── binary_search_single_core.hpp
 │   ├── linear_search.hpp
 │   ├── merge_sort.hpp
@@ -118,6 +119,7 @@ cd tui && npm install && npm run build && npm start
 │   │   ├── types.ts
 │   │   ├── settings.ts
 │   │   ├── database.ts
+│   │   ├── utils.ts                # shared utilities (formatAlgoName, sparkline, etc.)
 │   │   └── ui/
 │   │       ├── main-menu.ts
 │   │       ├── complexity-sweep.ts # sweep + comparison screens
@@ -166,25 +168,26 @@ Complexity sweep (single algorithm):
   --sweep-min <n>          Minimum N (default: 1 000)
   --sweep-max <n>          Maximum N (auto: 10M for O(log n)/O(n log n), 100K for O(n²))
   --sweep-points <n>       Number of log-spaced points (default: 10)
+  --sweep-runs <n>         Measured runs per point (default: 5, plus 3 warmup)
 
-Comparison sweep (all 6 algorithms):
+Comparison sweep (all 10 algorithms):
   --compare, -C            Run all algorithms across the same sweep range
 ```
 
 ## TUI Dashboard
 
-13-item main menu:
+17-item main menu:
 
 | # | Option | Description |
 |---|---|---|
-| 1–6 | Run [Algorithm] | Live execution with streaming metrics |
-| 7 | Complexity Sweep | Pick one algorithm, vary N, plot time vs N |
-| 8 | Compare All Algorithms | All 6 benchmarked side-by-side |
-| 9 | View Historical Runs | Browse SQLite DB of past runs |
-| 10 | View Latest Results | Most recent CSV with ASCII charts |
-| 11 | System Info | Environment and project details |
-| 12 | Settings | Configure sizes, targets, core affinity |
-| 13 | Exit | |
+| 1–10 | Run [Algorithm] | Live execution with streaming metrics |
+| 11 | Complexity Sweep | Pick one algorithm, vary N, plot time vs N |
+| 12 | Compare All Algorithms | All 10 benchmarked side-by-side |
+| 13 | View Historical Runs | Browse SQLite DB of past runs |
+| 14 | View Latest Results | Most recent CSV with ASCII charts |
+| 15 | System Info | Environment and project details |
+| 16 | Settings | Configure sizes, targets, core affinity |
+| 17 | Exit | |
 
 ## Complexity Plots
 

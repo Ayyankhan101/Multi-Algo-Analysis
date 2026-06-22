@@ -2,7 +2,7 @@
 #define SELECTION_SORT_HPP
 
 #include <vector>
-#include <algorithm>
+#include <utility>
 
 // Selection sort function - O(n^2) time complexity
 void selection_sort(std::vector<int>& arr)

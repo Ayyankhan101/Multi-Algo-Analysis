@@ -2,10 +2,7 @@ import blessed from 'blessed';
 import path from 'path';
 import { runSweep, runComparison, SweepParams } from '../runner';
 import { SweepPoint, ComparePoint } from '../types';
-
-function formatAlgo(name: string): string {
-  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
+import { formatAlgoName as formatAlgo, generateSparkline as sparkline } from '../utils';
 
 function fmtTime(t: number): string {
   if (t < 1e-6) return `${(t * 1e9).toFixed(1)}ns`;
@@ -14,16 +11,11 @@ function fmtTime(t: number): string {
   return `${t.toFixed(3)}s`;
 }
 
-function sparkline(values: number[], width: number = 30): string {
-  if (values.length === 0) return '';
-  const bars = ' ▁▂▃▄▅▆▇█';
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const sample = values.length > width
-    ? Array.from({ length: width }, (_, i) => values[Math.floor(i * values.length / width)])
-    : values;
-  return sample.map(v => bars[Math.min(8, Math.floor(((v - min) / range) * 8))]).join('');
+function formatCount(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(n);
 }
 
 export function showSweepScreen(
@@ -47,7 +39,7 @@ export function showSweepScreen(
 
     const tableHeader = blessed.box({
       top: 5, left: '3%', width: '94%', height: 1, tags: true,
-      content: '{bold}{cyan-fg}         N | Mean Time   | p95         | Stddev      | Memory (KB){/cyan-fg}{/bold}',
+      content: '{bold}{cyan-fg}         N | Mean Time   | p95         | Stddev      | Memory (KB) | Instr        | Cache Miss   | Branch Miss{/cyan-fg}{/bold}',
     });
 
     const tableBox = blessed.box({
@@ -92,7 +84,10 @@ export function showSweepScreen(
       const p95 = pt.p95_time ?? pt.execution_time;
       const sd  = pt.stddev_time ?? 0;
       measuredTimes.push(t);
-      const row = `  ${String(pt.n).padStart(9)} | ${fmtTime(t).padEnd(11)} | ${fmtTime(p95).padEnd(11)} | ${fmtTime(sd).padEnd(11)} | ${Math.round(pt.memory_usage)}`;
+      const instr = pt.instructions ? formatCount(pt.instructions) : 'N/A';
+      const cache = pt.cache_misses ? formatCount(pt.cache_misses) : 'N/A';
+      const branch = pt.branch_misses ? formatCount(pt.branch_misses) : 'N/A';
+      const row = `  ${String(pt.n).padStart(9)} | ${fmtTime(t).padEnd(11)} | ${fmtTime(p95).padEnd(11)} | ${fmtTime(sd).padEnd(11)} | ${String(Math.round(pt.memory_usage)).padEnd(12)} | ${instr.padEnd(12)} | ${cache.padEnd(12)} | ${branch}`;
       rows.push(row);
       tableBox.setContent(rows.slice(-11).join('\n'));
       statusBar.setContent(`{yellow-fg}⏳ Measured n=${pt.n}  mean=${fmtTime(t)}  p95=${fmtTime(p95)}{/yellow-fg}`);

@@ -1,6 +1,6 @@
 # C++ Resource Monitoring System for Algorithm Analysis
 
-Comprehensive system that benchmarks, monitors, and visualises resource usage for six algorithms running on a specific CPU core.
+Comprehensive system that benchmarks, monitors, and visualises resource usage for ten algorithms running on a specific CPU core, with hardware performance counter support.
 
 ## Quick Start
 
@@ -73,7 +73,11 @@ npm start
 |---|---|---|---|
 | Binary Search | `binary_search` | O(log n) time, O(1) space | sorted array |
 | Linear Search | `linear_search` | O(n) time, O(1) space | sorted array (target at end) |
+| Interpolation Search | `interpolation_search` | O(log log n) avg, O(n) worst | sorted uniform array |
 | Merge Sort | `merge_sort` | O(n log n) time, O(n) space | any |
+| Quick Sort | `quick_sort` | O(n log n) avg, O(n²) worst | any |
+| Heap Sort | `heap_sort` | O(n log n) time, O(1) space | any |
+| Shell Sort | `shell_sort` | O(n log²n) time, O(1) space | any |
 | Insertion Sort | `insertion_sort` | O(n²) time, O(1) space | reverse-sorted |
 | Selection Sort | `selection_sort` | O(n²) time, O(1) space | reverse-sorted |
 | Bubble Sort | `bubble_sort` | O(n²) time, O(1) space | reverse-sorted |
@@ -100,8 +104,9 @@ Complexity sweep — single algorithm:
   --sweep-min <n>          Minimum N (default: 1 000)
   --sweep-max <n>          Maximum N (auto-selected if omitted)
   --sweep-points <k>       Number of log-spaced points (default: 10)
+  --sweep-runs <n>         Measured runs per point (default: 5, plus 3 warmup)
 
-Comparison sweep — all 6 algorithms:
+Comparison sweep — all 10 algorithms:
   --compare, -C            Run all algorithms across the same sweep range
 ```
 
@@ -114,7 +119,7 @@ Comparison sweep — all 6 algorithms:
 # Complexity sweep: binary search, 20 points, N = 1K to 10M
 ./build/resource_monitor_app --algorithm binary_search --sweep --sweep-points 20 --sweep-max 10000000
 
-# Compare all 6 algorithms across N = 1K to 50K
+# Compare all 10 algorithms across N = 1K to 50K
 ./build/resource_monitor_app --compare --sweep-min 1000 --sweep-max 50000 --sweep-points 12
 
 # Pin to core 2
@@ -126,7 +131,7 @@ Comparison sweep — all 6 algorithms:
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                     main_application.cpp                      │
-│  CLI parsing → algorithm dispatch → sweep / compare loops    │
+│  CLI parsing → dispatch_algorithm() → sweep / compare loops  │
 └──────────────────────────────────────────────────────────────┘
           │                    │                    │
           ▼                    ▼                    ▼
@@ -137,6 +142,10 @@ Comparison sweep — all 6 algorithms:
           │                    │                    │
           ▼                    ▼                    ▼
      csv/*.csv          database/*.db          png/*.png
+
+Additional components:
+  PerfCounter  — Linux perf_event_open hardware counters (instructions, cache_misses, branch_misses)
+  PlotGenerator — sweep + comparison 4-panel PNG generation
 ```
 
 ### ResourceMonitor
@@ -146,7 +155,8 @@ Comparison sweep — all 6 algorithms:
 
 ### DatabaseManager
 - One SQLite table per run, named `<algorithm>_<timestamp>`
-- Schema: `id, timestamp, cpu_time, memory_usage, execution_time`
+- Schema: `id, timestamp, cpu_time, memory_usage, execution_time, instructions, cache_misses, branch_misses`
+- PerfCounter columns default to 0 when hardware counters are unavailable
 - Multiple processes writing concurrently will conflict — run sequentially
 
 ### PlotGenerator
@@ -158,8 +168,8 @@ Comparison sweep — all 6 algorithms:
 
 | Path | Contents |
 |---|---|
-| `csv/<algo>_<ts>.csv` | Per-run metrics (id, timestamp, cpu_time, memory_usage, execution_time) |
-| `csv/<algo>_sweep_<ts>.csv` | Sweep data (n, execution_time, cpu_time, memory_usage) |
+| `csv/<algo>_<ts>.csv` | Per-run metrics (id, timestamp, cpu_time, memory_usage, execution_time, instructions, cache_misses, branch_misses) |
+| `csv/<algo>_sweep_<ts>.csv` | Sweep data (n, execution_time, cpu_time, memory_usage, instructions, cache_misses, branch_misses) |
 | `csv/comparison_<ts>.csv` | Comparison data (n, binary_search, linear_search, …) |
 | `database/resource_metrics.db` | SQLite with all run tables |
 | `png/<algo>_sweep_<ts>.png` | 4-panel complexity plot |
@@ -194,7 +204,7 @@ cd build && ctest --verbose
    - Add to the `AlgorithmType` enum
    - Add a case in `parse_algorithm()`
    - Add a case in `algorithm_to_string()`
-   - Add dispatch in the main algorithm switch
+   - Add a case in `dispatch_algorithm()` (the centralized dispatch helper)
 4. In `hpp/plot_generator.hpp`, add a normalisation denominator in `normalization_expr()`
 5. In `tui/src/ui/main-menu.ts`, add a menu entry
 6. In `tui/src/index.ts`, add a `case` in the main switch

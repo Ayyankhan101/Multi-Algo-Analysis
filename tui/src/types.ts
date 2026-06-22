@@ -6,6 +6,9 @@ export interface ResourceMetric {
   cpu_time: number;
   memory_usage: number;
   execution_time: number;
+  instructions?: number;
+  cache_misses?: number;
+  branch_misses?: number;
 }
 
 export interface RunResult {
@@ -16,14 +19,6 @@ export interface RunResult {
   cpuTime: number;
   memoryUsage: number;
   execTime: number;
-}
-
-export interface RunConfig {
-  algorithm: string;
-  cpuCore: number;
-  arraySize: number;
-  arrayStep: number;
-  targets: number[];
 }
 
 export interface HistoricalRun {
@@ -60,6 +55,9 @@ export interface SweepPoint {
   p95_time?: number;
   cpu_time: number;
   memory_usage: number;
+  instructions?: number;
+  cache_misses?: number;
+  branch_misses?: number;
 }
 
 export interface SweepOutput {

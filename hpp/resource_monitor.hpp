@@ -76,8 +76,6 @@ public:
 #endif
     }
 
-    void clear_data() { monitoring_data.clear(); }
-
     ResourceData end_monitoring() {
         auto end_time_pt = std::chrono::high_resolution_clock::now();
 
@@ -120,8 +118,6 @@ public:
                  << data.execution_time << "\n";
         }
     }
-
-    const std::vector<ResourceData>& get_monitoring_data() const { return monitoring_data; }
 
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;

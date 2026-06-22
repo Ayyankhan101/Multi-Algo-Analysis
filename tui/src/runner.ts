@@ -3,21 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
 import { RunResult, ResourceMetric, SweepPoint, SweepOutput, ComparePoint, ComparisonOutput } from './types';
-
-const PROCESS_TIMEOUT_MS = 120000; // 120 seconds
-
-function resolveRunCwd(binaryPath: string): string {
-  // Walk up from the binary's directory to find the project root (CMakeLists.txt).
-  // The binary lives in build/ so we need one level up.
-  let dir = path.dirname(binaryPath);
-  for (let i = 0; i < 5; i++) {
-    if (fs.existsSync(path.join(dir, 'CMakeLists.txt'))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return path.dirname(binaryPath);
-}
+import { resolveProjectRoot, PROCESS_TIMEOUT_MS } from './utils';
 
 export interface RunOutput {
   results: RunResult[];
@@ -65,7 +51,7 @@ export function runAlgorithm(
     }
 
     const proc = spawn(binaryPath, args, {
-      cwd: resolveRunCwd(binaryPath),
+      cwd: resolveProjectRoot(path.dirname(binaryPath)),
     });
 
     // Set timeout
@@ -201,6 +187,9 @@ export function runSweep(
               p95_time:    parsed.p95_time,
               cpu_time: parsed.cpu_time,
               memory_usage: parsed.memory_usage,
+              instructions: parsed.instructions,
+              cache_misses: parsed.cache_misses,
+              branch_misses: parsed.branch_misses,
             };
             points.push(pt);
             if (onPoint) onPoint(pt);
@@ -295,6 +284,9 @@ export function readCSVFile(filePath: string): Promise<ResourceMetric[]> {
           cpu_time: parseFloat(row.cpu_time) || 0,
           memory_usage: parseInt(row.memory_usage) || 0,
           execution_time: parseFloat(row.execution_time) || 0,
+          instructions: parseInt(row.instructions) || 0,
+          cache_misses: parseInt(row.cache_misses) || 0,
+          branch_misses: parseInt(row.branch_misses) || 0,
         });
       })
       .on('end', () => resolve(results))

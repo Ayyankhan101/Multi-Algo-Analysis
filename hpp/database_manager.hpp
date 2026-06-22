@@ -51,7 +51,10 @@ public:
                                       "timestamp REAL NOT NULL,"
                                       "cpu_time REAL NOT NULL,"
                                       "memory_usage INTEGER NOT NULL,"
-                                      "execution_time REAL NOT NULL);";
+                                      "execution_time REAL NOT NULL,"
+                                      "instructions INTEGER DEFAULT 0,"
+                                      "cache_misses INTEGER DEFAULT 0,"
+                                      "branch_misses INTEGER DEFAULT 0);";
 
         int rc = sqlite3_exec(db, create_table_sql.c_str(), nullptr, nullptr, nullptr);
         if (rc != SQLITE_OK) {
@@ -60,7 +63,8 @@ public:
     }
 
     // Insert resource data into a specific table
-    void insert_resource_data(const std::string& table_name, double timestamp, double cpu_time, size_t memory_usage, double execution_time) {
+    void insert_resource_data(const std::string& table_name, double timestamp, double cpu_time, size_t memory_usage, double execution_time,
+                              long long instructions = 0, long long cache_misses = 0, long long branch_misses = 0) {
         // Sanitize table name to prevent SQL injection
         std::string sanitized_table_name = table_name;
         // Replace any non-alphanumeric characters with underscore
@@ -70,8 +74,8 @@ public:
             }
         }
 
-        std::string insert_sql = "INSERT INTO " + sanitized_table_name + " (timestamp, cpu_time, memory_usage, execution_time) "
-                                "VALUES (?, ?, ?, ?);";
+        std::string insert_sql = "INSERT INTO " + sanitized_table_name + " (timestamp, cpu_time, memory_usage, execution_time, instructions, cache_misses, branch_misses) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?);";
         sqlite3_stmt* stmt;
 
         int rc = sqlite3_prepare_v2(db, insert_sql.c_str(), -1, &stmt, nullptr);
@@ -83,6 +87,9 @@ public:
         sqlite3_bind_double(stmt, 2, cpu_time);
         sqlite3_bind_int64(stmt, 3, static_cast<sqlite3_int64>(memory_usage));
         sqlite3_bind_double(stmt, 4, execution_time);
+        sqlite3_bind_int64(stmt, 5, static_cast<sqlite3_int64>(instructions));
+        sqlite3_bind_int64(stmt, 6, static_cast<sqlite3_int64>(cache_misses));
+        sqlite3_bind_int64(stmt, 7, static_cast<sqlite3_int64>(branch_misses));
 
         rc = sqlite3_step(stmt);
         if (rc != SQLITE_DONE) {

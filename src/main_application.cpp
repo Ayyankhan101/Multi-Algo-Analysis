@@ -1,9 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <numeric>
-#include <thread>
-#include <sched.h>
 #include <chrono>
 #include <ctime>
 #include <cmath>
@@ -119,7 +116,22 @@ std::string algorithm_to_string(AlgorithmType algo) {
         case AlgorithmType::QUICK_SORT:           return "quick_sort";
         case AlgorithmType::HEAP_SORT:            return "heap_sort";
         case AlgorithmType::SHELL_SORT:           return "shell_sort";
-        default: return "unknown";
+    }
+    return "unknown";
+}
+
+void dispatch_algorithm(AlgorithmType algo, const std::vector<int>& data, int target = 0) {
+    switch (algo) {
+        case AlgorithmType::BINARY_SEARCH:        binary_search(data, target); break;
+        case AlgorithmType::LINEAR_SEARCH:        linear_search(data, target); break;
+        case AlgorithmType::INTERPOLATION_SEARCH: interpolation_search(data, target); break;
+        case AlgorithmType::MERGE_SORT:    { std::vector<int> c=data; merge_sort(c); break; }
+        case AlgorithmType::QUICK_SORT:    { std::vector<int> c=data; quick_sort(c); break; }
+        case AlgorithmType::HEAP_SORT:     { std::vector<int> c=data; heap_sort(c); break; }
+        case AlgorithmType::SHELL_SORT:    { std::vector<int> c=data; shell_sort(c); break; }
+        case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=data; insertion_sort(c); break; }
+        case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=data; selection_sort(c); break; }
+        case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=data; bubble_sort(c); break; }
     }
 }
 
@@ -343,6 +355,10 @@ int main(int argc, char* argv[])
 
             PlotGenerator plotter;
 
+            #ifdef HAS_SQLITE
+                DatabaseManager db_manager("database/resource_metrics.db");
+            #endif
+
             if (sweep_mode) {
                 // ── Single-algorithm sweep ────────────────────────────────────
                 std::string algo_name = algorithm_to_string(selected_algo);
@@ -350,6 +366,11 @@ int main(int argc, char* argv[])
                 std::ofstream csv_out(sweep_csv);
                 csv_out << "n,mean_time,stddev_time,median_time,p95_time,cpu_time,memory_usage"
                            ",instructions,cache_misses,branch_misses\n";
+
+                #ifdef HAS_SQLITE
+                    std::string sweep_table = algo_name + "_sweep_" + timestamp;
+                    db_manager.create_run_table(sweep_table);
+                #endif
 
                 if (use_json_output) {
                     emit_json_line("\"type\":\"sweep_config\",\"algorithm\":\"" + json_escape(algo_name) +
@@ -380,18 +401,7 @@ int main(int argc, char* argv[])
 
                     // Lambda to run one pass of the selected algorithm on this n
                     auto run_once = [&](const std::vector<int>& d) {
-                        switch (selected_algo) {
-                            case AlgorithmType::BINARY_SEARCH:        binary_search(d, n/2); break;
-                            case AlgorithmType::LINEAR_SEARCH:        linear_search(d, n/2); break;
-                            case AlgorithmType::INTERPOLATION_SEARCH: interpolation_search(d, n/2); break;
-                            case AlgorithmType::MERGE_SORT:    { std::vector<int> c=d; merge_sort(c); break; }
-                            case AlgorithmType::QUICK_SORT:    { std::vector<int> c=d; quick_sort(c); break; }
-                            case AlgorithmType::HEAP_SORT:     { std::vector<int> c=d; heap_sort(c); break; }
-                            case AlgorithmType::SHELL_SORT:    { std::vector<int> c=d; shell_sort(c); break; }
-                            case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=d; insertion_sort(c); break; }
-                            case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=d; selection_sort(c); break; }
-                            case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=d; bubble_sort(c); break; }
-                        }
+                        dispatch_algorithm(selected_algo, d, n / 2);
                     };
 
                     // 3 warmup runs (not measured)
@@ -442,6 +452,14 @@ int main(int argc, char* argv[])
                             << "\n";
                     csv_out.flush();
 
+                    #ifdef HAS_SQLITE
+                        db_manager.insert_resource_data(sweep_table, static_cast<double>(n),
+                            mean_cpu, static_cast<size_t>(mean_mem), mean_t,
+                            perf.is_available() ? sum_instructions  / sweep_runs : 0LL,
+                            perf.is_available() ? sum_cache_misses  / sweep_runs : 0LL,
+                            perf.is_available() ? sum_branch_misses / sweep_runs : 0LL);
+                    #endif
+
                     if (use_json_output) {
                         emit_json_line("\"type\":\"sweep_point\",\"n\":" + std::to_string(n) +
                                       ",\"execution_time\":" + std::to_string(mean_t) +
@@ -450,7 +468,10 @@ int main(int argc, char* argv[])
                                       ",\"median_time\":"    + std::to_string(median_t) +
                                       ",\"p95_time\":"       + std::to_string(p95_t) +
                                       ",\"cpu_time\":"       + std::to_string(mean_cpu) +
-                                      ",\"memory_usage\":"   + std::to_string(mean_mem));
+                                      ",\"memory_usage\":"   + std::to_string(mean_mem) +
+                                      ",\"instructions\":"   + std::to_string(perf.is_available() ? sum_instructions  / sweep_runs : 0LL) +
+                                      ",\"cache_misses\":"   + std::to_string(perf.is_available() ? sum_cache_misses  / sweep_runs : 0LL) +
+                                      ",\"branch_misses\":"  + std::to_string(perf.is_available() ? sum_branch_misses / sweep_runs : 0LL));
                     } else {
                         std::cout << "  n=" << std::setw(8) << n
                                   << "  mean=" << std::scientific << std::setprecision(3) << mean_t << "s"
@@ -479,6 +500,11 @@ int main(int argc, char* argv[])
                 csv_out << "n,binary_search,linear_search,interpolation_search,"
                            "merge_sort,quick_sort,heap_sort,shell_sort,"
                            "insertion_sort,selection_sort,bubble_sort\n";
+
+                #ifdef HAS_SQLITE
+                    std::string compare_table = "comparison_" + timestamp;
+                    db_manager.create_run_table(compare_table);
+                #endif
 
                 const std::vector<std::pair<std::string, AlgorithmType>> all_algos = {
                     {"binary_search",        AlgorithmType::BINARY_SEARCH},
@@ -513,29 +539,49 @@ int main(int argc, char* argv[])
                                             atype == AlgorithmType::INTERPOLATION_SEARCH);
                         const std::vector<int>& data = a_is_search ? sorted_data : reverse_data;
 
-                        ResourceMonitor monitor;
-                        monitor.start_monitoring();
+                        auto run_algo = [&](const std::vector<int>& d) {
+                            dispatch_algorithm(atype, d, n / 2);
+                        };
 
-                        switch (atype) {
-                            case AlgorithmType::BINARY_SEARCH:        binary_search(data, n / 2); break;
-                            case AlgorithmType::LINEAR_SEARCH:        linear_search(data, n / 2); break;
-                            case AlgorithmType::INTERPOLATION_SEARCH: interpolation_search(data, n / 2); break;
-                            case AlgorithmType::MERGE_SORT:    { std::vector<int> c=data; merge_sort(c); break; }
-                            case AlgorithmType::QUICK_SORT:    { std::vector<int> c=data; quick_sort(c); break; }
-                            case AlgorithmType::HEAP_SORT:     { std::vector<int> c=data; heap_sort(c); break; }
-                            case AlgorithmType::SHELL_SORT:    { std::vector<int> c=data; shell_sort(c); break; }
-                            case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=data; insertion_sort(c); break; }
-                            case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=data; selection_sort(c); break; }
-                            case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=data; bubble_sort(c); break; }
+                        // 3 warmup runs (not measured)
+                        for (int w = 0; w < 3; ++w) run_algo(data);
+
+                        // sweep_runs measured passes
+                        std::vector<double> times;
+                        times.reserve(sweep_runs);
+                        double sum_cpu = 0.0, sum_mem = 0.0;
+
+                        for (int r = 0; r < sweep_runs; ++r) {
+                            ResourceMonitor monitor;
+                            monitor.start_monitoring();
+                            run_algo(data);
+                            auto d = monitor.end_monitoring();
+                            times.push_back(d.execution_time);
+                            sum_cpu += d.cpu_time;
+                            sum_mem += d.memory_usage;
                         }
 
-                        auto d = monitor.end_monitoring();
-                        csv_out << std::fixed << std::setprecision(9) << "," << d.execution_time;
+                        // Compute statistics
+                        std::sort(times.begin(), times.end());
+                        double mean_t = 0.0;
+                        for (double t : times) mean_t += t;
+                        mean_t /= sweep_runs;
+                        double mean_cpu = sum_cpu / sweep_runs;
+                        double mean_mem = sum_mem / sweep_runs;
+
+                        csv_out << std::fixed << std::setprecision(9) << "," << mean_t;
+
+                        #ifdef HAS_SQLITE
+                            db_manager.insert_resource_data(compare_table, static_cast<double>(n),
+                                mean_cpu, static_cast<size_t>(mean_mem), mean_t);
+                        #endif
 
                         if (use_json_output) {
                             emit_json_line("\"type\":\"compare_point\",\"n\":" + std::to_string(n) +
                                           ",\"algorithm\":\"" + aname + "\"" +
-                                          ",\"execution_time\":" + std::to_string(d.execution_time));
+                                          ",\"execution_time\":" + std::to_string(mean_t) +
+                                          ",\"cpu_time\":" + std::to_string(mean_cpu) +
+                                          ",\"memory_usage\":" + std::to_string(mean_mem));
                         }
                     }
                     csv_out << "\n";
@@ -669,42 +715,26 @@ int main(int argc, char* argv[])
                 int result = -1;
 
                 if (is_search_algo) {
-                    // Multi-sample for search algorithms (fast enough to repeat)
-                    int final_sample = 3;
-                    for (int sample = 0; sample < final_sample; ++sample) {
-                        if (selected_algo == AlgorithmType::BINARY_SEARCH)
-                            result = binary_search(data, target);
-                        else if (selected_algo == AlgorithmType::LINEAR_SEARCH)
-                            result = linear_search(data, target);
-                        else
-                            result = interpolation_search(data, target);
+                    // Single run for search algorithms (consistent with non-streaming path)
+                    if (selected_algo == AlgorithmType::BINARY_SEARCH)
+                        result = binary_search(data, target);
+                    else if (selected_algo == AlgorithmType::LINEAR_SEARCH)
+                        result = linear_search(data, target);
+                    else
+                        result = interpolation_search(data, target);
 
-                        struct rusage current_usage;
-                        getrusage(RUSAGE_SELF, &current_usage);
-                        auto now_tp = std::chrono::high_resolution_clock::now();
-                        double elapsed = std::chrono::duration<double>(now_tp - stream_start).count();
-                        emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) +
-                                     ",\"sample\":" + std::to_string(sample + 1) +
-                                     ",\"cpu_time\":" + std::to_string(current_usage.ru_utime.tv_sec + current_usage.ru_utime.tv_usec / 1000000.0) +
-                                     ",\"memory_usage\":" + std::to_string(current_usage.ru_maxrss) +
-                                     ",\"elapsed\":" + std::to_string(elapsed));
-
-                        if (sample < final_sample - 1) {
-                            std::this_thread::sleep_for(std::chrono::microseconds(100));
-                        }
-                    }
+                    struct rusage current_usage;
+                    getrusage(RUSAGE_SELF, &current_usage);
+                    auto now_tp = std::chrono::high_resolution_clock::now();
+                    double elapsed = std::chrono::duration<double>(now_tp - stream_start).count();
+                    emit_json_line("\"type\":\"metrics\",\"run\":" + std::to_string(i + 1) +
+                                 ",\"sample\":1" +
+                                 ",\"cpu_time\":" + std::to_string(current_usage.ru_utime.tv_sec + current_usage.ru_utime.tv_usec / 1000000.0) +
+                                 ",\"memory_usage\":" + std::to_string(current_usage.ru_maxrss) +
+                                 ",\"elapsed\":" + std::to_string(elapsed));
                 } else {
                     // Single run for sort algorithms; sample metrics after completion
-                    switch (selected_algo) {
-                        case AlgorithmType::MERGE_SORT:    { std::vector<int> c=data; merge_sort(c); break; }
-                        case AlgorithmType::QUICK_SORT:    { std::vector<int> c=data; quick_sort(c); break; }
-                        case AlgorithmType::HEAP_SORT:     { std::vector<int> c=data; heap_sort(c); break; }
-                        case AlgorithmType::SHELL_SORT:    { std::vector<int> c=data; shell_sort(c); break; }
-                        case AlgorithmType::INSERTION_SORT:{ std::vector<int> c=data; insertion_sort(c); break; }
-                        case AlgorithmType::SELECTION_SORT:{ std::vector<int> c=data; selection_sort(c); break; }
-                        case AlgorithmType::BUBBLE_SORT:   { std::vector<int> c=data; bubble_sort(c); break; }
-                        default: break;
-                    }
+                    dispatch_algorithm(selected_algo, data);
 
                     struct rusage current_usage;
                     getrusage(RUSAGE_SELF, &current_usage);

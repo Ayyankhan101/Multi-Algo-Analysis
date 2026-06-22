@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { getDefaultSettings, validateEnvironment, resolveProjectRoot } from './settings';
+import { getDefaultSettings, validateEnvironment, getSettingsPath } from './settings';
 import { showMainMenu } from './ui/main-menu';
 import { showExecutionScreen } from './ui/execution-screen';
 import { showLiveExecutionScreen } from './ui/live-execution';
@@ -240,7 +240,7 @@ async function chooseSweepAlgorithm(): Promise<string | null> {
 
 // Save settings to disk
 function saveSettings(settings: any): void {
-  const settingsPath = path.join(resolveProjectRoot(), '.settings.json');
+  const settingsPath = getSettingsPath();
   fs.writeFileSync(settingsPath, JSON.stringify(settings.algorithmParams, null, 2));
 }
 

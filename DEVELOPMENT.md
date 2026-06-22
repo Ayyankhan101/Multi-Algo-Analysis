@@ -2,12 +2,12 @@
 
 ---
 
-## Current State (May 2026)
+## Current State (June 2026)
 
 | Metric | Value |
 |---|---|
 | Tests | 51 passing across 8 suites |
-| Algorithms | 6 (binary search, linear search, merge sort, insertion sort, selection sort, bubble sort) |
+| Algorithms | 10 (binary/linear/interpolation search, merge/quick/heap/shell/insertion/selection/bubble sort) |
 | Build | 0 warnings, 0 errors (GCC + Clang) |
 | CI/CD | GitHub Actions — 7 jobs |
 | Quality score | 9.2 / 10 |
@@ -140,7 +140,7 @@ The binary supports two analysis modes beyond per-run execution:
 Runs one algorithm across log-spaced N values, emitting JSON `sweep_point` events:
 
 ```json
-{"type":"sweep_point","n":1000,"execution_time":0.000002,"cpu_time":0.000001,"memory_usage":4320}
+{"type":"sweep_point","n":1000,"execution_time":0.000002,"mean_time":0.000002,"stddev_time":0.000001,"median_time":0.000001,"p95_time":0.000005,"cpu_time":0.000016,"memory_usage":5640,"instructions":0,"cache_misses":0,"branch_misses":0}
 ```
 
 Generates:
@@ -151,7 +151,7 @@ Worst-case data is used automatically: reverse-sorted arrays for sorts, sorted a
 
 ### Compare mode (`--compare`)
 
-Runs all 6 algorithms across the same sweep range, emitting JSON `compare_point` events:
+Runs all 10 algorithms across the same sweep range with 3 warmup + configurable measured runs, emitting JSON `compare_point` events:
 
 ```json
 {"type":"compare_point","n":50000,"algorithm":"bubble_sort","execution_time":6.615}
@@ -170,7 +170,7 @@ Generates:
 3. Push and confirm all CI jobs green
 4. Tag:
    ```bash
-   git tag -a v0.3 -m "Release 0.3: 6 algorithms, complexity sweep, comparison plots"
+    git tag -a v0.3 -m "Release 0.3: 10 algorithms, complexity sweep, comparison plots, PerfCounter support"
    git push origin v0.3
    ```
 5. Create GitHub release with changelog
@@ -221,6 +221,6 @@ rm -rf build && cmake -B build && cmake --build build -j$(nproc)
 
 ---
 
-**Last Updated:** May 18, 2026
+**Last Updated:** June 22, 2026
 **Status:** Production Ready
 **Quality Score:** 9.2/10

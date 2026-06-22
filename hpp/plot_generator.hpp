@@ -22,15 +22,6 @@ public:
         execute_gnuplot(plt);
     }
 
-    void generate_plots_from_csv(const std::string& csv_file,
-                                 const std::string& output_prefix = "resource_metrics") {
-        std::string dat = output_prefix + ".dat";
-        convert_csv_to_data_file(csv_file, dat);
-        std::string plt = output_prefix + ".plt";
-        generate_gnuplot_script(dat, plt, output_prefix);
-        execute_gnuplot(plt);
-    }
-
     void generate_sweep_plot(const std::string& csv_file,
                              const std::string& output_prefix,
                              const std::string& algo_name) {

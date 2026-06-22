@@ -1,21 +1,9 @@
 import blessed from 'blessed';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { RunResult } from '../types';
-
-function resolveProjectRoot(binaryPath: string): string {
-  let dir = path.dirname(binaryPath);
-  for (let i = 0; i < 5; i++) {
-    if (fs.existsSync(path.join(dir, 'CMakeLists.txt'))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return path.dirname(binaryPath);
-}
-
-const PROCESS_TIMEOUT_MS = 120000; // 120 seconds
+import { formatAlgoName, getAlgorithmDescription, resolveProjectRoot, PROCESS_TIMEOUT_MS } from '../utils';
 
 export interface LiveExecutionOutput {
   results: RunResult[];
@@ -40,24 +28,6 @@ interface LiveMetric {
 interface JsonLine {
   type: string;
   [key: string]: any;
-}
-
-function formatAlgoName(name: string): string {
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function getAlgorithmDescription(name: string): string {
-  switch (name) {
-    case 'binary_search': return 'O(log n) search on sorted array';
-    case 'linear_search': return 'O(n) sequential search';
-    case 'merge_sort': return 'O(n log n) sorting algorithm';
-    case 'insertion_sort': return 'O(n^2) simple sorting algorithm';
-    case 'selection_sort': return 'O(n^2) in-place sorting algorithm';
-    case 'bubble_sort': return 'O(n^2) simple comparison sorting';
-    default: return '';
-  }
 }
 
 export function showLiveExecutionScreen(

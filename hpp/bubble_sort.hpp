@@ -2,7 +2,7 @@
 #define BUBBLE_SORT_HPP
 
 #include <vector>
-#include <algorithm>
+#include <utility>
 
 // Bubble sort function - O(n^2) time complexity
 void bubble_sort(std::vector<int>& arr)

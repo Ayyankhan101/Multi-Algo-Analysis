@@ -1,23 +1,6 @@
 import blessed from 'blessed';
 import { RunResult } from '../types';
-
-function formatAlgoName(name: string): string {
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function getAlgorithmDescription(name: string): string {
-  switch (name) {
-    case 'binary_search': return 'O(log n) search on sorted array';
-    case 'linear_search': return 'O(n) sequential search';
-    case 'merge_sort': return 'O(n log n) sorting algorithm';
-    case 'insertion_sort': return 'O(n^2) simple sorting algorithm';
-    case 'selection_sort': return 'O(n^2) in-place sorting algorithm';
-    case 'bubble_sort': return 'O(n^2) simple comparison sorting';
-    default: return '';
-  }
-}
+import { formatAlgoName, getAlgorithmDescription } from '../utils';
 
 export function showExecutionScreen(results: RunResult[], rawOutput: string, algorithmName: string = 'binary_search'): Promise<void> {
   return new Promise((resolve) => {

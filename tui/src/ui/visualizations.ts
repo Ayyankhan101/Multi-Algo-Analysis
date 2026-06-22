@@ -1,83 +1,6 @@
 import blessed from 'blessed';
 import { ResourceMetric, RunResult } from '../types';
-
-// Sparkline characters (unicode block elements)
-const SPARKLINE_CHARS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-
-/**
- * Generate a sparkline (mini line chart) from an array of values
- */
-export function generateSparkline(values: number[], width: number = 40): string {
-  if (values.length === 0) return '';
-  if (values.length === 1) return SPARKLINE_CHARS[7];
-
-  let min = values[0];
-  let max = values[0];
-  for (let i = 1; i < values.length; i++) {
-    if (values[i] < min) min = values[i];
-    if (values[i] > max) max = values[i];
-  }
-  const range = max - min || 1;
-
-  const sampledValues = sampleArray(values, width);
-
-  return sampledValues
-    .map(v => {
-      const index = Math.floor(((v - min) / range) * (SPARKLINE_CHARS.length - 1));
-      return SPARKLINE_CHARS[Math.min(index, SPARKLINE_CHARS.length - 1)];
-    })
-    .join('');
-}
-
-/**
- * Sample an array to fit within a specific width
- */
-function sampleArray(arr: number[], width: number): number[] {
-  if (arr.length <= width) return arr;
-  
-  const step = arr.length / width;
-  const result: number[] = [];
-  
-  for (let i = 0; i < width; i++) {
-    const index = Math.floor(i * step);
-    result.push(arr[index]);
-  }
-  
-  return result;
-}
-
-/**
- * Generate a horizontal bar chart
- */
-export function generateHorizontalBarChart(
-  labels: string[],
-  values: number[],
-  width: number = 50,
-  color: string = 'cyan'
-): string {
-  if (labels.length === 0 || values.length === 0) return '';
-
-  let maxVal = values[0];
-  let minVal = values[0];
-  for (let i = 1; i < values.length; i++) {
-    if (values[i] > maxVal) maxVal = values[i];
-    if (values[i] < minVal) minVal = values[i];
-  }
-  const range = maxVal - minVal || 1;
-  
-  const lines: string[] = [];
-  
-  for (let i = 0; i < labels.length; i++) {
-    const normalized = ((values[i] - minVal) / range) * width;
-    const barLength = Math.max(1, Math.floor(normalized));
-    const bar = '█'.repeat(barLength);
-    const label = labels[i].padEnd(12);
-    
-    lines.push(`  ${label} │{${color}-fg}${bar}{/${color}-fg} ${formatValue(values[i])}`);
-  }
-  
-  return lines.join('\n');
-}
+import { formatAlgoName, generateSparkline } from '../utils';
 
 /**
  * Generate a comparison table for multiple algorithm runs
@@ -113,61 +36,6 @@ export function generateComparisonTable(results: RunResult[], isSearch: boolean 
     });
   }
 
-  return lines.join('\n');
-}
-
-/**
- * Generate multi-algorithm comparison chart
- */
-export function generateMultiAlgorithmChart(
-  algorithmResults: Array<{ name: string; results: RunResult[] }>
-): string {
-  if (algorithmResults.length === 0) return '';
-  
-  const lines: string[] = [];
-  
-  // Calculate averages for each algorithm
-  const averages = algorithmResults.map(algo => {
-    const avgCpu = algo.results.reduce((sum, r) => sum + r.cpuTime, 0) / algo.results.length;
-    const avgMem = algo.results.reduce((sum, r) => sum + r.memoryUsage, 0) / algo.results.length;
-    const avgExec = algo.results.reduce((sum, r) => sum + r.execTime, 0) / algo.results.length;
-    
-    return { name: algo.name, avgCpu, avgMem, avgExec };
-  });
-  
-  lines.push('{bold}{blue-fg}Algorithm Comparison (Averages){/blue-fg}{/bold}\n');
-  
-  // CPU Time comparison
-  lines.push('{bold}CPU Time (s){/bold}');
-  lines.push(generateHorizontalBarChart(
-    averages.map(a => shortenName(a.name)),
-    averages.map(a => a.avgCpu),
-    40,
-    'cyan'
-  ));
-  
-  lines.push('');
-  
-  // Memory comparison
-  lines.push('{bold}Memory Usage (KB){/bold}');
-  lines.push(generateHorizontalBarChart(
-    averages.map(a => shortenName(a.name)),
-    averages.map(a => a.avgMem),
-    40,
-    'green'
-  ));
-  
-  lines.push('');
-  
-  // Execution Time comparison
-  lines.push('{bold}Execution Time (s){/bold}');
-  lines.push(generateHorizontalBarChart(
-    averages.map(a => shortenName(a.name)),
-    averages.map(a => a.avgExec),
-    40,
-    'yellow'
-  ));
-  
   return lines.join('\n');
 }
 
@@ -208,6 +76,28 @@ export function generatePerformanceTrend(metrics: ResourceMetric[]): string {
   const execMinMax = safeMinMax(execTimes);
   lines.push(`{bold}Execution Time Trend{/bold}  Min: ${execMinMax.min.toExponential(2)}s  Max: ${execMinMax.max.toExponential(2)}s`);
   lines.push(`[${generateSparkline(execTimes, 50)}]`);
+
+  // PerfCounter sparklines (if available)
+  const instructions = metrics.map(m => m.instructions || 0).filter(v => v > 0);
+  if (instructions.length > 0) {
+    const instrMinMax = safeMinMax(instructions);
+    lines.push(`\n{bold}Instructions Trend{/bold}  Min: ${instrMinMax.min.toLocaleString()}  Max: ${instrMinMax.max.toLocaleString()}`);
+    lines.push(`[${generateSparkline(instructions, 50)}]`);
+  }
+
+  const cacheMisses = metrics.map(m => m.cache_misses || 0).filter(v => v > 0);
+  if (cacheMisses.length > 0) {
+    const cacheMinMax = safeMinMax(cacheMisses);
+    lines.push(`\n{bold}Cache Misses Trend{/bold}  Min: ${cacheMinMax.min.toLocaleString()}  Max: ${cacheMinMax.max.toLocaleString()}`);
+    lines.push(`[${generateSparkline(cacheMisses, 50)}]`);
+  }
+
+  const branchMisses = metrics.map(m => m.branch_misses || 0).filter(v => v > 0);
+  if (branchMisses.length > 0) {
+    const branchMinMax = safeMinMax(branchMisses);
+    lines.push(`\n{bold}Branch Misses Trend{/bold}  Min: ${branchMinMax.min.toLocaleString()}  Max: ${branchMinMax.max.toLocaleString()}`);
+    lines.push(`[${generateSparkline(branchMisses, 50)}]`);
+  }
   
   return lines.join('\n');
 }
@@ -340,91 +230,6 @@ export function showEnhancedResults(
       resolve();
     });
   });
-}
-
-/**
- * Show comparison screen for multiple algorithms
- */
-export function showAlgorithmComparison(
-  algorithmResults: Array<{ name: string; results: RunResult[] }>
-): Promise<void> {
-  return new Promise((resolve) => {
-    const screen = blessed.screen({
-      smartCSR: true,
-      title: 'Algorithm Comparison',
-    });
-    
-    const header = blessed.box({
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: 2,
-      align: 'center',
-      content: '{bold}{blue-fg}Multi-Algorithm Performance Comparison{/blue-fg}{/bold}',
-      tags: true,
-    });
-    
-    // Comparison chart
-    const chartBox = blessed.box({
-      top: 3,
-      left: '5%',
-      width: '90%',
-      height: 20,
-      content: generateMultiAlgorithmChart(algorithmResults),
-      tags: true,
-    });
-    
-    // Individual summaries
-    let summaryContent = '{bold}Individual Algorithm Details{/bold}\n\n';
-    algorithmResults.forEach(algo => {
-      const avgExec = algo.results.reduce((sum, r) => sum + r.execTime, 0) / algo.results.length;
-      summaryContent += `{bold}${formatAlgoName(algo.name)}{/bold} (${algo.results.length} runs)\n`;
-      summaryContent += `  Avg Exec Time: ${avgExec.toExponential(2)}s\n`;
-      summaryContent += `  Sparkline: [${generateSparkline(algo.results.map(r => r.execTime), 40)}]\n\n`;
-    });
-    
-    const detailsBox = blessed.box({
-      top: 24,
-      left: '5%',
-      width: '90%',
-      height: 15,
-      content: summaryContent,
-      tags: true,
-    });
-    
-    const footer = blessed.box({
-      bottom: 0,
-      left: 0,
-      width: '100%',
-      height: 1,
-      align: 'center',
-      content: '{gray-fg}Press any key to continue{/gray-fg}',
-      tags: true,
-    });
-    
-    screen.append(header);
-    screen.append(chartBox);
-    screen.append(detailsBox);
-    screen.append(footer);
-    
-    screen.render();
-    
-    screen.key(['escape', 'q', 'enter', 'C-c'], () => {
-      screen.destroy();
-      resolve();
-    });
-  });
-}
-
-// Helper functions
-function formatAlgoName(name: string): string {
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function shortenName(name: string): string {
-  return name.replace(/_/g, ' ').substring(0, 12);
 }
 
 function formatValue(value: number): string {

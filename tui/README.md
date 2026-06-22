@@ -1,6 +1,6 @@
 # Multi-Algo-Analysis TUI
 
-Interactive terminal UI for benchmarking and visualising six algorithms with live resource monitoring.
+Interactive terminal UI for benchmarking and visualising ten algorithms with live resource monitoring and hardware performance counters.
 
 ## Quick Start
 
@@ -25,26 +25,30 @@ npm start
 │         Resource Monitoring Dashboard                │
 └──────────────────────────────────────────────────────┘
 
-  1. Run Binary Search
-  2. Run Linear Search
-  3. Run Merge Sort
-  4. Run Insertion Sort
-  5. Run Selection Sort
-  6. Run Bubble Sort
-  7. Complexity Sweep
-  8. Compare All Algorithms
-  9. View Historical Runs
-  10. View Latest Results
-  11. System Info
-  12. Settings
-  13. Exit
+  1.  Run Binary Search
+  2.  Run Linear Search
+  3.  Run Interpolation Search
+  4.  Run Merge Sort
+  5.  Run Quick Sort
+  6.  Run Heap Sort
+  7.  Run Shell Sort
+  8.  Run Insertion Sort
+  9.  Run Selection Sort
+  10. Run Bubble Sort
+  11. Complexity Sweep
+  12. Compare All Algorithms
+  13. View Historical Runs
+  14. View Latest Results
+  15. System Info
+  16. Settings
+  17. Exit
 
   ↑/↓ Navigate | 1-0 Select | q Quit
 ```
 
 ## Features
 
-### Run Algorithm (options 1–6)
+### Run Algorithm (options 1–10)
 Live streaming execution: each run result appears as it completes, showing CPU time, memory, and execution time. After all runs finish, an enhanced results screen with ASCII charts is shown, followed by an export prompt.
 
 ### Complexity Sweep (option 7)
@@ -65,8 +69,8 @@ Plot: /path/to/png/binary_search_sweep_20260518_170559.png
 
 The PNG is a 4-panel plot: raw time, normalized by complexity class, log-log slope, and memory usage.
 
-### Compare All Algorithms (option 8)
-Benchmarks all 6 algorithms across the same input sizes in a single run, streaming each measurement live:
+### Compare All Algorithms (option 12)
+Benchmarks all 10 algorithms across the same input sizes in a single run with 3 warmup + configurable measured runs, streaming each measurement live:
 
 ```
          N | Algorithm           | Exec Time
@@ -85,13 +89,13 @@ Benchmarks all 6 algorithms across the same input sizes in a single run, streami
 
 Produces a 4-panel comparison PNG showing all complexity classes side by side.
 
-### View Historical Runs (option 9)
+### View Historical Runs (option 13)
 Browse all past executions stored in SQLite. Select any run to see per-metric detail and averages.
 
-### View Latest Results (option 10)
+### View Latest Results (option 14)
 Loads the most recent CSV and displays it with summary statistics and an ASCII memory-usage chart.
 
-### Settings (option 12)
+### Settings (option 16)
 Configure:
 - Array size (`dataSize`)
 - Step between elements (`dataStep`)
@@ -99,7 +103,7 @@ Configure:
 - CPU core affinity (`cpuCore`)
 - Custom search targets
 
-Settings are persisted to `.settings.json` in the project root.
+Settings are persisted to `.settings.json` in the `tui/` directory.
 
 ## Keyboard Controls
 
@@ -124,6 +128,7 @@ Settings are persisted to `.settings.json` in the project root.
         │   runComparison()    ◀── compare_point  └── --json
         │
         ├── database.ts  (reads SQLite directly for history)
+        ├── utils.ts     (shared: formatAlgoName, sparkline, resolveProjectRoot, etc.)
         └── ui/
             ├── main-menu.ts
             ├── live-execution.ts     (streaming run results)

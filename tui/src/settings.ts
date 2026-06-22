@@ -1,21 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import { AppSettings, AlgorithmParams } from './types';
+import { resolveProjectRoot } from './utils';
 
-export function resolveProjectRoot(): string {
-  // Walk up from __dirname to find the C++ project root (contains CMakeLists.txt)
-  let current = __dirname;
-  for (let i = 0; i < 10; i++) {
-    if (fs.existsSync(path.join(current, 'CMakeLists.txt'))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  // Fallback: tui lives one level below the project root
-  return path.resolve(__dirname, '../..');
-}
+export { resolveProjectRoot };
 
 export function getDefaultAlgorithmParams(): AlgorithmParams {
   return {
@@ -28,12 +16,17 @@ export function getDefaultAlgorithmParams(): AlgorithmParams {
   };
 }
 
+export function getSettingsPath(): string {
+  // Settings live in the tui/ directory (one level above src/ or dist/)
+  return path.join(__dirname, '..', '.settings.json');
+}
+
 export function getDefaultSettings(): AppSettings {
   const root = resolveProjectRoot();
 
   // Try to load saved settings
   let savedParams: Partial<AlgorithmParams> | null = null;
-  const settingsPath = path.join(root, '.settings.json');
+  const settingsPath = getSettingsPath();
   if (fs.existsSync(settingsPath)) {
     try {
       savedParams = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
